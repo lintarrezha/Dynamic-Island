@@ -1,0 +1,20 @@
+<Window x:Class="iLand.Views.IslandWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="iLand - Foundation Check"
+        Width="360" Height="200"
+        WindowStartupLocation="CenterScreen"
+        Background="#0B0B0C">
+
+    <!-- Window sementara untuk memastikan fondasi berjalan.
+         Di Phase 3 file ini diubah menjadi floating island. -->
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+        <TextBlock Text="iLand foundation OK"
+                   Foreground="White" FontSize="18"
+                   HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding CurrentTime}"
+                   Foreground="#9A9AA0" FontSize="32"
+                   Margin="0,12,0,0"
+                   HorizontalAlignment="Center" />
+    </StackPanel>
+</Window>
