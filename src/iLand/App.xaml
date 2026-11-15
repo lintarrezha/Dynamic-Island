@@ -1,11 +1,15 @@
 <Application x:Class="iLand.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!--
-        Perhatikan: tidak ada StartupUri di sini.
-        Window pertama dibuat lewat kode di App.xaml.cs (OnStartup),
-        supaya bisa dibuat oleh Dependency Injection.
-    -->
+    <!-- Tidak ada StartupUri: window pertama dibuat lewat kode di App.xaml.cs. -->
     <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Warna dan style bersama untuk island dan Settings -->
+                <ResourceDictionary Source="Resources/Theme.xaml" />
+                <ResourceDictionary Source="Resources/Navigation.xaml" />
+                <ResourceDictionary Source="Resources/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

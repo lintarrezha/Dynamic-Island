@@ -18,6 +18,11 @@ public static class AppPaths
 
     /// <summary>Serilog otomatis menambahkan tanggal, hasilnya: iland-20261106.log</summary>
     public static string LogFilePattern { get; } = Path.Combine(LogsFolder, "iland-.log");
+    public static string SettingsFilePath { get; } = Path.Combine(AppDataFolder, "settings.json");
+    public static string TodosFilePath { get; } = Path.Combine(AppDataFolder, "todos.json");
+    public static string ShelfFilePath { get; } = Path.Combine(AppDataFolder, "shelf.json");
+    public static string LyricsFolder { get; } = Path.Combine(AppDataFolder, "lyrics");
+    public static string TimerStatsFilePath { get; } = Path.Combine(AppDataFolder, "timer-stats.json");
 
     public static void EnsureFoldersExist()
     {

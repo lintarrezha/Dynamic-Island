@@ -1,0 +1,23 @@
+<UserControl x:Class="iLand.Views.Components.EmptyState"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Tampilan "kosong" yang seragam di seluruh island: ikon 28 px redup (35% putih) + satu baris teks Caption.
+        Cara pakai:  <components:EmptyState Icon="{StaticResource IconMusic}" Text="No media playing" />
+        Tampil atau tidaknya diatur lewat Visibility pada elemen EmptyState itu sendiri.
+    -->
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Viewbox Width="28" Height="28" HorizontalAlignment="Center">
+            <Canvas Width="24" Height="24">
+                <Path Data="{Binding Icon, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      Stroke="{StaticResource TextTertiaryBrush}" StrokeThickness="1.6"
+                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+            </Canvas>
+        </Viewbox>
+        <TextBlock Text="{Binding Text, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                   Margin="0,8,0,0" HorizontalAlignment="Center"
+                   TextAlignment="Center" TextWrapping="Wrap"
+                   Style="{StaticResource TextCaption}" />
+    </StackPanel>
+</UserControl>

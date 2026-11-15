@@ -1,0 +1,199 @@
+<UserControl x:Class="iLand.Views.Components.CaptureView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:helpers="clr-namespace:iLand.Helpers">
+
+    <UserControl.Resources>
+
+        <!-- Ikon garis orisinal pada kanvas 24 x 24 -->
+        <StreamGeometry x:Key="IconMonitor">M3.5 5.5 H20.5 V15.5 H3.5 Z M9 19.5 H15 M12 15.5 V19.5</StreamGeometry>
+        <StreamGeometry x:Key="IconArea">M4 9 V5.5 A1.5 1.5 0 0 1 5.5 4 H9 M15 4 H18.5 A1.5 1.5 0 0 1 20 5.5 V9 M20 15 V18.5 A1.5 1.5 0 0 1 18.5 20 H15 M9 20 H5.5 A1.5 1.5 0 0 1 4 18.5 V15</StreamGeometry>
+        <StreamGeometry x:Key="IconWindow">M3.5 6 A1.5 1.5 0 0 1 5 4.5 H19 A1.5 1.5 0 0 1 20.5 6 V18 A1.5 1.5 0 0 1 19 19.5 H5 A1.5 1.5 0 0 1 3.5 18 Z M3.5 9.5 H20.5</StreamGeometry>
+
+        <!-- Lingkaran luar untuk kartu rekam (titik merah atau kotak stop digambar di dalamnya) -->
+        <StreamGeometry x:Key="IconRecordRing">M20 12 A8 8 0 1 1 4 12 A8 8 0 1 1 20 12 Z</StreamGeometry>
+
+        <!-- Latar kartu rekam: merah semantik (sama dengan DangerBrush, #FF453A) dengan isi sekitar 14%, 22% saat hover -->
+        <SolidColorBrush x:Key="RecordTileBrush" Color="#FF453A" Opacity="0.14" />
+        <SolidColorBrush x:Key="RecordTileHoverBrush" Color="#FF453A" Opacity="0.22" />
+
+        <!--
+            Kartu besar: ikon di atas, nama di bawah. Ikon lewat Tag, nama lewat Content.
+            - Hover: latar sedikit terang dan kartu naik 2 px (digeser pada Border di dalam template,
+              jadi tidak bentrok dengan skala tekan milik PressFeedback yang bekerja pada tombolnya).
+            - Tekan: skala 0,96 lewat PressFeedback (Prompt 2).
+            Angka gerak dan skala semuanya dari MotionTokens.
+        -->
+        <Style x:Key="CaptureTileButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Height" Value="108" />
+            <Setter Property="helpers:PressFeedback.IsEnabled" Value="True" />
+            <Setter Property="helpers:PressFeedback.Scale" Value="{x:Static helpers:MotionTokens.PressScaleLarge}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="18" Background="{StaticResource CardBrush}">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0" />
+                            </Border.RenderTransform>
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Viewbox Width="26" Height="26" HorizontalAlignment="Center">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{TemplateBinding Tag}" Stroke="{TemplateBinding Foreground}"
+                                              StrokeThickness="1.6" StrokeLineJoin="Round"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                                <ContentPresenter Margin="0,10,0,0" HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource HoverBrush}" />
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Bg"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                             To="{x:Static helpers:MotionTokens.TileLiftOffset}"
+                                                             Duration="{x:Static helpers:MotionTokens.TileLiftDuration}"
+                                                             EasingFunction="{x:Static helpers:MotionTokens.ResizeEase}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Bg"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                             To="0"
+                                                             Duration="{x:Static helpers:MotionTokens.TileLiftDuration}"
+                                                             EasingFunction="{x:Static helpers:MotionTokens.ResizeEase}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!--
+            Kartu rekam layar: bernuansa merah. Saat sedang merekam, titik merah di tengah berganti menjadi
+            kotak stop dan teksnya menjadi "Stop · 00:12" (teks dari CaptureViewModel.RecordTileText).
+        -->
+        <Style x:Key="RecordTileButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Height" Value="108" />
+            <Setter Property="helpers:PressFeedback.IsEnabled" Value="True" />
+            <Setter Property="helpers:PressFeedback.Scale" Value="{x:Static helpers:MotionTokens.PressScaleLarge}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="18" Background="{StaticResource RecordTileBrush}">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0" />
+                            </Border.RenderTransform>
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Viewbox Width="26" Height="26" HorizontalAlignment="Center">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{StaticResource IconRecordRing}" Stroke="{StaticResource DangerBrush}"
+                                              StrokeThickness="1.6" />
+                                        <Ellipse x:Name="RecordDot" Width="8" Height="8"
+                                                 Canvas.Left="8" Canvas.Top="8" Fill="{StaticResource DangerBrush}" />
+                                        <Rectangle x:Name="StopSquare" Width="8" Height="8"
+                                                   Canvas.Left="8" Canvas.Top="8"
+                                                   RadiusX="2" RadiusY="2" Fill="{StaticResource DangerBrush}"
+                                                   Visibility="Collapsed" />
+                                    </Canvas>
+                                </Viewbox>
+                                <ContentPresenter Margin="0,10,0,0" HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource RecordTileHoverBrush}" />
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Bg"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                             To="{x:Static helpers:MotionTokens.TileLiftOffset}"
+                                                             Duration="{x:Static helpers:MotionTokens.TileLiftDuration}"
+                                                             EasingFunction="{x:Static helpers:MotionTokens.ResizeEase}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Bg"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                             To="0"
+                                                             Duration="{x:Static helpers:MotionTokens.TileLiftDuration}"
+                                                             EasingFunction="{x:Static helpers:MotionTokens.ResizeEase}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsRecording}" Value="True">
+                                <Setter TargetName="RecordDot" Property="Visibility" Value="Collapsed" />
+                                <Setter TargetName="StopSquare" Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Chip pintasan di kanan atas (judul "Capture" sudah tampil di header island, jadi tidak diulang di sini) -->
+        <Border Grid.Row="0" HorizontalAlignment="Right" Margin="0,0,0,6" CornerRadius="8" Padding="9,3"
+                Background="{StaticResource CardBrush}" ToolTip="{Binding ShortcutTooltipText}">
+            <TextBlock Text="{Binding ShortcutText}" FontSize="11"
+                       Foreground="{StaticResource TextSecondaryBrush}" />
+        </Border>
+
+        <!-- Empat kartu: tiga screenshot dan satu rekam layar -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0" Style="{StaticResource CaptureTileButton}"
+                    Tag="{StaticResource IconMonitor}" Content="Full screen"
+                    Command="{Binding CaptureFullScreenCommand}" />
+            <Button Grid.Column="2" Style="{StaticResource CaptureTileButton}"
+                    Tag="{StaticResource IconArea}" Content="Area"
+                    Command="{Binding CaptureAreaCommand}" />
+            <Button Grid.Column="4" Style="{StaticResource CaptureTileButton}"
+                    Tag="{StaticResource IconWindow}" Content="Window"
+                    Command="{Binding CaptureWindowCommand}" />
+            <Button Grid.Column="6" Style="{StaticResource RecordTileButton}"
+                    Content="{Binding RecordTileText}"
+                    ToolTip="{Binding RecordShortcutText}"
+                    Command="{Binding ToggleRecordingCommand}" />
+        </Grid>
+    </Grid>
+</UserControl>

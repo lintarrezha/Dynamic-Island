@@ -1,0 +1,269 @@
+<UserControl x:Class="iLand.Views.Components.TimerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:components="clr-namespace:iLand.Views.Components"
+             xmlns:helpers="clr-namespace:iLand.Helpers">
+
+    <!--
+        Tab Timer (tinggi total 212, isi 138 px). DataContext diwarisi dari IslandViewModel.
+        Tiga kolom: cincin progress 128 px dengan waktu di tengah, tombol plus dan minus bertumpuk (hanya mode Timer
+        yang belum berjalan, di mode lain disembunyikan tetapi tempatnya tetap agar tata letak tidak bergeser),
+        lalu kolom kanan: segmented control, tombol Start/Pause + reset, dan baris bawah.
+        Baris bawah berisi salah satu dari: chip 1/5/10 menit, "Sessions today" dengan titik, atau teks status.
+    -->
+    <UserControl.Resources>
+
+        <!-- Tombol utama: pill terisi aksen biru. Isi (ikon dan teks) dikirim lewat Content. -->
+        <Style x:Key="TimerPrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="helpers:PressFeedback.IsEnabled" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="19" Background="{StaticResource AccentBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Tombol bulat 38 px (reset). Mati = 40 persen terlihat. -->
+        <Style x:Key="TimerRoundButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="38" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="helpers:PressFeedback.IsEnabled" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="19" Background="{StaticResource CardBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource HoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Tombol plus dan minus: bulat 30 px, tahan untuk mengulang (Delay dan Interval diatur di tiap tombol). -->
+        <Style x:Key="TimerStepButtonStyle" TargetType="RepeatButton">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="helpers:PressFeedback.IsEnabled" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border x:Name="Bg" CornerRadius="15" Background="{StaticResource CardBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource HoverBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Ikon play dan pause di tombol utama: hanya satu yang terlihat, mengikuti IsTimerRunning. -->
+        <Style x:Key="PlayIconStyle" TargetType="Path">
+            <Setter Property="Fill" Value="White" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsTimerRunning}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PauseIconStyle" TargetType="Path">
+            <Setter Property="Fill" Value="White" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsTimerRunning}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Panel yang tersembunyi (tetapi tetap memakai tempat) kecuali bila ShowCountdownPresets true. -->
+        <Style x:Key="StepPanelStyle" TargetType="StackPanel">
+            <Setter Property="Visibility" Value="Hidden" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ShowCountdownPresets}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="128" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Kolom 1: cincin progress dan waktu -->
+        <Grid Grid.Column="0" Width="128" Height="128" VerticalAlignment="Center">
+            <components:ProgressRing Thickness="5"
+                                     RingBrush="{StaticResource AccentBrush}"
+                                     TrackBrush="{StaticResource FillStrongBrush}"
+                                     TargetProgress="{Binding TimerProgress}"
+                                     PulseTrigger="{Binding TimerPulseCount}" />
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="{Binding TimerDisplayText}"
+                           FontSize="{Binding TimerFontSize}" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           HorizontalAlignment="Center"
+                           Typography.NumeralAlignment="Tabular" />
+                <TextBlock Text="{Binding TimerRingLabel}"
+                           FontSize="11" Margin="0,2,0,0"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Kolom 2: tambah dan kurangi 1 menit -->
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,0,0"
+                    Style="{StaticResource StepPanelStyle}">
+            <RepeatButton Style="{StaticResource TimerStepButtonStyle}"
+                          Delay="400" Interval="120"
+                          ToolTip="Add 1 minute"
+                          Command="{Binding AdjustCountdownMinutesCommand}" CommandParameter="1">
+                <Viewbox Width="14" Height="14">
+                    <Canvas Width="24" Height="24">
+                        <Path Data="{StaticResource IconPlus}" Stroke="{StaticResource TextPrimaryBrush}" StrokeThickness="2.2"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                    </Canvas>
+                </Viewbox>
+            </RepeatButton>
+            <RepeatButton Style="{StaticResource TimerStepButtonStyle}" Margin="0,8,0,0"
+                          Delay="400" Interval="120"
+                          ToolTip="Remove 1 minute"
+                          Command="{Binding AdjustCountdownMinutesCommand}" CommandParameter="-1">
+                <Viewbox Width="14" Height="14">
+                    <Canvas Width="24" Height="24">
+                        <Path Data="{StaticResource IconMinus}" Stroke="{StaticResource TextPrimaryBrush}" StrokeThickness="2.2"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                    </Canvas>
+                </Viewbox>
+            </RepeatButton>
+        </StackPanel>
+
+        <!-- Kolom 3: pilihan jenis, kontrol, baris bawah -->
+        <Grid Grid.Column="2" Margin="16,0,0,0" VerticalAlignment="Center">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <components:SegmentedControl Grid.Row="0"
+                                         Items="Timer|Pomodoro|Stopwatch"
+                                         SelectedIndex="{Binding TimerModeIndex, Mode=TwoWay}"
+                                         IsEnabled="{Binding CanChangeTimerMode}" />
+
+            <Grid Grid.Row="1" Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0" Height="38"
+                        Style="{StaticResource TimerPrimaryButtonStyle}"
+                        Command="{Binding ToggleTimerCommand}">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Viewbox Width="14" Height="14" VerticalAlignment="Center">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="{StaticResource IconPlay}" Style="{StaticResource PlayIconStyle}" />
+                                <Path Data="{StaticResource IconPause}" Style="{StaticResource PauseIconStyle}" />
+                            </Canvas>
+                        </Viewbox>
+                        <TextBlock Text="{Binding TimerPrimaryText}" Margin="8,0,0,0"
+                                   FontSize="14" FontWeight="SemiBold" Foreground="White"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <Button Grid.Column="1" Margin="8,0,0,0"
+                        Style="{StaticResource TimerRoundButtonStyle}"
+                        ToolTip="Reset"
+                        IsEnabled="{Binding CanResetTimer}"
+                        Command="{Binding ResetTimerCommand}">
+                    <Viewbox Width="16" Height="16">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="{StaticResource IconReset}" Stroke="{StaticResource TextPrimaryBrush}" StrokeThickness="2"
+                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                        </Canvas>
+                    </Viewbox>
+                </Button>
+            </Grid>
+
+            <!-- Baris bawah: tiga isi bergantian, hanya satu yang terlihat -->
+            <Grid Grid.Row="2" Margin="0,10,0,0" MinHeight="26">
+
+                <!-- Mode Timer yang belum berjalan: chip durasi -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                            Visibility="{Binding ShowCountdownPresets, Converter={StaticResource BoolToVisibility}}">
+                    <Button Style="{StaticResource ChipButtonStyle}" Content="1 min"
+                            Command="{Binding SetCountdownMinutesCommand}" CommandParameter="1" />
+                    <Button Style="{StaticResource ChipButtonStyle}" Content="5 min" Margin="6,0,0,0"
+                            Command="{Binding SetCountdownMinutesCommand}" CommandParameter="5" />
+                    <Button Style="{StaticResource ChipButtonStyle}" Content="10 min" Margin="6,0,0,0"
+                            Command="{Binding SetCountdownMinutesCommand}" CommandParameter="10" />
+                </StackPanel>
+
+                <!-- Mode Pomodoro: sesi fokus selesai hari ini -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                            Visibility="{Binding ShowSessionDots, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Sessions today" FontSize="12" VerticalAlignment="Center"
+                               Foreground="{StaticResource TextSecondaryBrush}" />
+                    <ItemsControl ItemsSource="{Binding SessionDots}" Margin="10,0,0,0" VerticalAlignment="Center"
+                                  Focusable="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Ellipse x:Name="Dot" Width="8" Height="8" Margin="0,0,5,0"
+                                         Fill="{StaticResource FillStrongBrush}" />
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding}" Value="True">
+                                        <Setter TargetName="Dot" Property="Fill" Value="{StaticResource AccentBrush}" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding SessionsTodayText}" FontSize="12" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="3,0,0,0"
+                               Foreground="{StaticResource TextPrimaryBrush}" />
+                </StackPanel>
+
+                <!-- Timer berjalan atau Stopwatch: teks status -->
+                <TextBlock Text="{Binding TimerLabelText}" FontSize="12" VerticalAlignment="Center"
+                           Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"
+                           Visibility="{Binding ShowTimerStatusLabel, Converter={StaticResource BoolToVisibility}}" />
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

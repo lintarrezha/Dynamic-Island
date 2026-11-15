@@ -1,0 +1,39 @@
+<UserControl x:Class="iLand.Views.Components.SegmentedControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="30" Focusable="False">
+
+    <!--
+        Pilihan satu dari beberapa (Timer, Pomodoro, Stopwatch; nanti File, Clipboard di Shelf).
+        Latar pill TabBarBrush, indikator putih meluncur ke segmen terpilih (perilaku sama dengan indikator tab bar).
+        Isi segmen dibuat dari properti Items (dipisah tanda |) di SegmentedControl.xaml.cs.
+        Setiap segmen adalah Button, jadi klik tidak dianggap klik pada island.
+    -->
+    <UserControl.Resources>
+        <Style x:Key="SegmentButtonStyle" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Background="{StaticResource TabBarBrush}" CornerRadius="15" Padding="3">
+        <Grid>
+            <Border x:Name="Indicator" Background="{StaticResource TextPrimaryBrush}" CornerRadius="12"
+                    HorizontalAlignment="Left" Width="0" Visibility="Collapsed">
+                <Border.RenderTransform>
+                    <TranslateTransform />
+                </Border.RenderTransform>
+            </Border>
+            <Grid x:Name="SegmentsGrid" SizeChanged="SegmentsGrid_SizeChanged" />
+        </Grid>
+    </Border>
+</UserControl>

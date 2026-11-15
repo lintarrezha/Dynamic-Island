@@ -31,6 +31,8 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        // Aplikasi hanya berhenti lewat Exit (tray atau tombol), bukan karena window tertutup.
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
         // 1. Cek apakah iLand sudah berjalan.
         _singleInstanceMutex = new Mutex(initiallyOwned: true, MutexName, out bool isFirstInstance);
@@ -62,6 +64,14 @@ public partial class App : Application
         // 5. Minta DI membuat window beserta semua dependency-nya, lalu tampilkan.
         var window = _serviceProvider.GetRequiredService<IslandWindow>();
         window.Show();
+        // Buat ikon di system tray.
+        _serviceProvider.GetRequiredService<ITrayService>().Initialize();
+        // Daftarkan pintasan keyboard global (Ctrl + Alt + S untuk screenshot area).
+        _serviceProvider.GetRequiredService<IHotkeyService>().Initialize();
+        // Riwayat clipboard: pemantau baru dipasang jika pengguna menyalakannya di Settings (bawaannya mati).
+        _serviceProvider.GetRequiredService<IClipboardService>().Initialize();
+        // Mulai membaca sesi media (Spotify, browser, dll). Berjalan di latar dan tidak memblokir tampilan.
+        _ = _serviceProvider.GetRequiredService<IMediaService>().InitializeAsync();
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -110,12 +120,41 @@ public partial class App : Application
 
         // Services (satu instance dipakai bersama = Singleton).
         services.AddSingleton<IClockService, ClockService>();
+        services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IWindowService, WindowService>();
+        services.AddSingleton<IBatteryService, BatteryService>();
+        services.AddSingleton<IMediaService, MediaService>();
+        services.AddSingleton<ILyricsService, LyricsService>();
+        services.AddSingleton<INotificationService, NotificationService>();
+        services.AddSingleton<ITimerService, TimerService>();
+        services.AddSingleton<IFocusStatsService, FocusStatsService>();
+        services.AddSingleton<ITodoService, TodoService>();
+        services.AddSingleton<IShelfService, ShelfService>();
+        services.AddSingleton<IClipboardService, ClipboardService>();
+        services.AddSingleton<IHotkeyService, HotkeyService>();
+        services.AddSingleton<ICaptureService, CaptureService>();
+        services.AddSingleton<IRecordingService, RecordingService>();
+        services.AddSingleton<IStartupService, StartupService>();
+        services.AddSingleton<ITrayService, TrayService>();
+        services.AddSingleton<IMonitorService, MonitorService>();
+        services.AddSingleton<IWindowContextService, WindowContextService>();
+        services.AddSingleton<IAudioLevelService, AudioLevelService>();
+        services.AddSingleton<IAppVolumeService, AppVolumeService>();
+        services.AddSingleton<IMixerService, MixerService>();
 
         // ViewModels
         services.AddSingleton<IslandViewModel>();
+        services.AddSingleton<TodoViewModel>();
+        services.AddSingleton<ShelfViewModel>();
+        services.AddSingleton<ClipboardViewModel>();
+        services.AddSingleton<CaptureViewModel>();
+        services.AddSingleton<LyricsViewModel>();
+        services.AddSingleton<MixerViewModel>();
+        services.AddTransient<SettingsViewModel>();   // Transient: dibuat baru tiap Settings dibuka
 
         // Views
         services.AddSingleton<IslandWindow>();
+        services.AddTransient<SettingsWindow>();
 
         return services.BuildServiceProvider();
     }

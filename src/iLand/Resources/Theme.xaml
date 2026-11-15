@@ -1,0 +1,205 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:helpers="clr-namespace:iLand.Helpers">
+
+    <!--
+        ===== Token desain iLand =====
+        Ini SATU-SATUNYA tempat nilai warna, tingkat putih, radius, dan gaya teks didefinisikan.
+        File lain cukup memanggil nama token ini, jangan menulis ulang angkanya.
+    -->
+
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <!-- ===== Warna dasar ===== -->
+    <SolidColorBrush x:Key="IslandBrush" Color="#000000" />   <!-- hitam murni, menyatu dengan layar -->
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#151517" />
+    <SolidColorBrush x:Key="CardBrush" Color="#1C1C1E" />
+    <SolidColorBrush x:Key="HoverBrush" Color="#2C2C2E" />
+    <SolidColorBrush x:Key="TabBarBrush" Color="#161618" />   <!-- latar pill tab bar di header -->
+
+    <!-- ===== Tiga tingkat putih: 100%, 60%, 35% ===== -->
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFFFFF" />     <!-- 100% -->
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#99FFFFFF" /> <!-- 60% -->
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#59FFFFFF" />  <!-- 35% -->
+
+    <!-- ===== Isi putih transparan untuk mengelompokkan (pengganti garis pemisah) ===== -->
+    <SolidColorBrush x:Key="FillSubtleBrush" Color="#0FFFFFFF" />    <!-- 6% -->
+    <SolidColorBrush x:Key="FillStrongBrush" Color="#1AFFFFFF" />    <!-- 10% -->
+
+    <!-- ===== Aksen: hanya satu (biru) + tiga warna makna ===== -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#0A84FF" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="#30D158" />   <!-- hijau -->
+    <SolidColorBrush x:Key="WarningBrush" Color="#FFD60A" />   <!-- kuning -->
+    <SolidColorBrush x:Key="DangerBrush" Color="#FF453A" />    <!-- merah -->
+
+    <!--
+        ===== Radius =====
+        Aturan konsentris: radius dalam = radius luar dikurangi jarak ke tepi luar.
+        Contoh: island radius 28, margin header 16, maka elemen di tepi header berradius 12.
+        Urutan terdefinisi di sini karena style di bawah memakainya lewat StaticResource.
+    -->
+    <CornerRadius x:Key="CardRadius">16</CornerRadius>
+    <CornerRadius x:Key="CompactCardRadius">14</CornerRadius>
+    <CornerRadius x:Key="ControlRadius">12</CornerRadius>
+
+    <!-- ===== Empat gaya teks island ===== -->
+    <!-- Display: jam besar. Angka tabular agar lebar digit sama dan jam tidak bergoyang. -->
+    <Style x:Key="TextDisplay" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="56" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+    </Style>
+
+    <!-- Title: judul lagu, judul panel -->
+    <Style x:Key="TextTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- Body: teks isi. TextBodyStrong = versi SemiBold (jam kecil, persen baterai, nama kartu) -->
+    <Style x:Key="TextBody" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+    </Style>
+    <Style x:Key="TextBodyStrong" TargetType="TextBlock" BasedOn="{StaticResource TextBody}">
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- Caption: keterangan kecil dan redup (60%) -->
+    <Style x:Key="TextCaption" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+    </Style>
+
+    <!-- ===== Style teks lama (dipakai Settings) ===== -->
+    <Style x:Key="TitleText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+
+    <Style x:Key="SectionText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Margin" Value="0,28,0,4" />
+    </Style>
+
+    <Style x:Key="LabelText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+    </Style>
+
+    <Style x:Key="ValueText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+
+    <!-- ===== Checkbox untuk Settings ===== -->
+    <Style x:Key="SettingCheckBox" TargetType="CheckBox">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Margin" Value="0,12,0,0" />
+    </Style>
+
+    <!-- ===== Tombol ikon kecil (gear, power) ===== -->
+    <Style x:Key="IconButtonStyle" TargetType="Button">
+        <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="helpers:PressFeedback.IsEnabled" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" Width="28" Height="28" CornerRadius="{StaticResource ControlRadius}" Background="Transparent">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource HoverBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+        <!-- ===== Tab kecil di island (Home / Music) ===== -->
+    <Style x:Key="TabRadioStyle" TargetType="RadioButton">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bg" CornerRadius="{StaticResource ControlRadius}" Padding="10,4" Background="Transparent">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource HoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource CardBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== Progress bar tipis untuk lagu ===== -->
+    <Style x:Key="ThinProgressBar" TargetType="ProgressBar">
+        <Setter Property="Height" Value="4" />
+        <Setter Property="Background" Value="#2C2C2E" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Grid>
+                        <Border x:Name="PART_Track" CornerRadius="2" Background="{TemplateBinding Background}" />
+                        <Border x:Name="PART_Indicator" CornerRadius="2" HorizontalAlignment="Left"
+                                Background="{TemplateBinding Foreground}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+        <!-- ===== Tombol kecil bergaya "chip" (1 min, 5 min, Reset, dst.) ===== -->
+    <Style x:Key="ChipButtonStyle" TargetType="Button">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="helpers:PressFeedback.IsEnabled" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" CornerRadius="{StaticResource ControlRadius}" Padding="9,3" Background="{StaticResource CardBrush}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource HoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

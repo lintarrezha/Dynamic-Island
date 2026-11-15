@@ -1,0 +1,145 @@
+<UserControl x:Class="iLand.Views.Components.ClipboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:components="clr-namespace:iLand.Views.Components"
+             xmlns:helpers="clr-namespace:iLand.Helpers">
+
+    <!--
+        Bagian Clipboard di tab Shelf. Hanya tampilan: logika (opt-in, hanya teks, 20 item, hanya di memori) ada di
+        ClipboardService dan tidak diubah di sini.
+        Tiga keadaan: fitur mati (penjelasan privasi + Turn on), nyala tetapi kosong, atau daftar kartu.
+        Kartu 116 x 88: pratinjau teks sampai 4 baris (MaxHeight 58 = 4 x tinggi baris 14,5), waktu salin di bawah. Klik = salin ulang dan kartu berkedip aksen.
+        Tombol silang muncul saat kartu disorot mouse. Empat kartu muat dalam satu baris pada lebar island 540.
+    -->
+    <UserControl.Resources>
+
+        <!-- Kartu: tombol penuh yang menyalin teks saat diklik. Lapisan Flash berkedip aksen saat IsCopied menjadi true. -->
+        <Style x:Key="ClipCardStyle" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="helpers:PressFeedback.IsEnabled" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Border x:Name="Bg" CornerRadius="14" Background="{StaticResource CardBrush}">
+                                <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                            </Border>
+                            <Border x:Name="Flash" CornerRadius="14" Background="{StaticResource AccentBrush}"
+                                    Opacity="0" IsHitTestVisible="False" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource HoverBrush}" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsCopied}" Value="True">
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard FillBehavior="Stop">
+                                            <DoubleAnimation Storyboard.TargetName="Flash" Storyboard.TargetProperty="Opacity"
+                                                             From="0.45" To="0" Duration="0:0:0.7" FillBehavior="Stop"
+                                                             EasingFunction="{x:Static helpers:MotionTokens.ContentInEase}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Tombol hapus kecil di pojok kanan atas kartu, hanya terlihat saat kartu disorot mouse -->
+        <Style x:Key="RemoveCardButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Width="20" Height="20" Background="Transparent">
+                            <Ellipse x:Name="Circle" Width="16" Height="16" Fill="#33FFFFFF" />
+                            <Path Data="M6.5 6.5 L13.5 13.5 M13.5 6.5 L6.5 13.5"
+                                  Stroke="White" StrokeThickness="1.4"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  HorizontalAlignment="Left" VerticalAlignment="Top" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Circle" Property="Fill" Value="#55FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+
+        <!-- Keadaan 1: fitur mati. Penjelasan privasi dan tombol untuk menyalakan -->
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="380"
+                    Visibility="{Binding IsDisabled, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="Clipboard history is off" HorizontalAlignment="Center"
+                       FontSize="14" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextPrimaryBrush}" />
+            <TextBlock Margin="0,6,0,0" TextAlignment="Center" TextWrapping="Wrap" FontSize="12"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       Text="Keep your last 20 copied texts here. They stay in memory only, nothing is saved to disk or sent anywhere. Copies marked private by password managers are skipped." />
+            <Button Content="Turn on" Margin="0,12,0,0" HorizontalAlignment="Center"
+                    Style="{StaticResource PillButtonStyle}"
+                    Command="{Binding TurnOnCommand}" />
+        </StackPanel>
+
+        <!-- Keadaan 2: fitur nyala tetapi belum ada yang disalin -->
+        <components:EmptyState Icon="{StaticResource IconClipboard}" Text="Copy some text and it will show up here"
+                               Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}" />
+
+        <!-- Keadaan 3: kartu teks, yang terbaru di depan -->
+        <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled"
+                      Visibility="{Binding HasItems, Converter={StaticResource BoolToVisibility}}">
+            <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid x:Name="Card" Width="116" Height="88" Margin="0,0,8,8">
+                            <Button Style="{StaticResource ClipCardStyle}"
+                                    Command="{Binding CopyCommand}"
+                                    ToolTip="{Binding TooltipText}"
+                                    AutomationProperties.Name="Copy this text again">
+                                <Grid Margin="11,9,11,8">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Text="{Binding Preview}" FontSize="11.5"
+                                               TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="58"
+                                               LineHeight="14.5" LineStackingStrategy="BlockLineHeight"
+                                               Foreground="{StaticResource TextPrimaryBrush}" />
+                                    <TextBlock Grid.Row="1" Text="{Binding TimeText}" Margin="0,4,0,0" FontSize="10"
+                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                </Grid>
+                            </Button>
+
+                            <Button x:Name="RemoveButton" Style="{StaticResource RemoveCardButton}"
+                                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,5,0"
+                                    ToolTip="Remove" AutomationProperties.Name="Remove from history"
+                                    Command="{Binding RemoveCommand}" />
+                        </Grid>
+                        <DataTemplate.Triggers>
+                            <Trigger SourceName="Card" Property="IsMouseOver" Value="True">
+                                <Setter TargetName="RemoveButton" Property="Opacity" Value="1" />
+                            </Trigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

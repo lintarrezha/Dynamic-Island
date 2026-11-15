@@ -1,0 +1,35 @@
+<UserControl x:Class="iLand.Views.Components.VolumeSlider"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Slider volume: track 4 px, isi putih (atau aksen sampul bila FillBrush diisi), thumb putih 12 px yang muncul saat hover atau digeser.
+        Beda dengan SeekBar: nilai berubah SELAMA digeser (Value dua arah), karena volume harus terdengar langsung.
+        Area klik setinggi kontrol (diatur pemakai) supaya bar tipis tetap mudah dikenai.
+    -->
+    <Grid x:Name="Root" Background="Transparent"
+          SizeChanged="Root_SizeChanged"
+          MouseEnter="Root_MouseChanged"
+          MouseLeave="Root_MouseChanged"
+          MouseLeftButtonDown="Root_MouseLeftButtonDown"
+          MouseMove="Root_MouseMove"
+          MouseLeftButtonUp="Root_MouseLeftButtonUp"
+          LostMouseCapture="Root_LostMouseCapture">
+
+        <Border x:Name="TrackBar" Height="4" CornerRadius="2"
+                Background="{StaticResource HoverBrush}" VerticalAlignment="Center" />
+
+        <Border x:Name="FillBar" Height="4" Width="0" CornerRadius="2"
+                Background="{Binding FillBrush, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                HorizontalAlignment="Left" VerticalAlignment="Center" />
+
+        <Ellipse x:Name="ThumbDot" Width="12" Height="12"
+                 Fill="{StaticResource TextPrimaryBrush}"
+                 HorizontalAlignment="Left" VerticalAlignment="Center"
+                 Opacity="0" IsHitTestVisible="False">
+            <Ellipse.RenderTransform>
+                <TranslateTransform x:Name="ThumbShift" X="0" />
+            </Ellipse.RenderTransform>
+        </Ellipse>
+    </Grid>
+</UserControl>
