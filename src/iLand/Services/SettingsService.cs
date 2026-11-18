@@ -17,6 +17,13 @@ public sealed class SettingsService : ISettingsService, IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
+    // Membaca dengan toleran: komentar dan koma di akhir (hasil suntingan tangan) tidak membuat file dianggap rusak.
+    private static readonly JsonSerializerOptions ReadOptions = new()
+    {
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
+    };
+
     private readonly ILogger<SettingsService> _logger;
     private readonly DispatcherTimer _saveTimer;
     private bool _hasPendingChanges;
@@ -29,6 +36,7 @@ public sealed class SettingsService : ISettingsService, IDisposable
     {
         _logger = logger;
         Current = Load();
+        MotionTokens.AnimationsEnabled = Current.AnimationsEnabled;
 
         _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _saveTimer.Tick += OnSaveTimerTick;
@@ -37,6 +45,7 @@ public sealed class SettingsService : ISettingsService, IDisposable
     public void NotifyChanged()
     {
         Current.Validate();
+        MotionTokens.AnimationsEnabled = Current.AnimationsEnabled;
         _hasPendingChanges = true;
 
         // Mulai ulang hitung mundur 500 ms.
@@ -74,7 +83,7 @@ public sealed class SettingsService : ISettingsService, IDisposable
             if (File.Exists(AppPaths.SettingsFilePath))
             {
                 string json = File.ReadAllText(AppPaths.SettingsFilePath);
-                var loaded = JsonSerializer.Deserialize<AppSettings>(json);
+                var loaded = JsonSerializer.Deserialize<AppSettings>(json, ReadOptions);
                 if (loaded is not null)
                 {
                     loaded.Validate();
@@ -85,11 +94,29 @@ public sealed class SettingsService : ISettingsService, IDisposable
         }
         catch (Exception ex)
         {
-            // File rusak: jangan crash, pakai nilai bawaan.
+            // File rusak: jangan crash, pakai nilai bawaan. Salinan file asli disimpan dulu karena
+            // perubahan pengaturan berikutnya akan menimpa settings.json dengan nilai bawaan.
             _logger.LogWarning(ex, "Failed to read settings, using defaults");
+            BackUpUnreadableFile();
         }
 
         return new AppSettings();
+    }
+
+    private void BackUpUnreadableFile()
+    {
+        try
+        {
+            if (File.Exists(AppPaths.SettingsFilePath))
+            {
+                File.Copy(AppPaths.SettingsFilePath, AppPaths.SettingsFilePath + ".bak", overwrite: true);
+                _logger.LogWarning("The unreadable settings.json was copied to settings.json.bak");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not back up the unreadable settings file");
+        }
     }
 
     private void OnSaveTimerTick(object? sender, EventArgs e)

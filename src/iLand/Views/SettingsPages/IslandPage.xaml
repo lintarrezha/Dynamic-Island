@@ -1,0 +1,151 @@
+<UserControl x:Class="iLand.Views.SettingsPages.IslandPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sc="clr-namespace:iLand.Views.SettingsControls"
+             xmlns:components="clr-namespace:iLand.Views.Components">
+
+    <!--
+        Halaman Island: layar, ukuran dan tampilan, perilaku buka dan tutup, otomatis, dan Shelf. Bentuk (Dynamic atau Notch) dan skala 80 sampai 115% per bentuk, dengan pratinjau langsung.
+        Gaya bernama (Style) memakai DynamicResource karena kamus SettingsTheme.xaml dimuat di SettingsWindow,
+        sedangkan halaman ini dibuat sebelum dipasang ke jendela (StaticResource tidak menemukannya).
+        Kontrol bergaya implisit (SettingsRow, SettingsSlider, SettingsPageLayout) aman.
+    -->
+
+    <sc:SettingsPageLayout Title="Island" Subtitle="How the island looks and when it opens.">
+        <StackPanel>
+                <TextBlock Text="Display" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Display on" Description="Which monitor shows the island.">
+                        <ComboBox Width="240" Style="{DynamicResource SettingsDropdownStyle}"
+                                  ItemsSource="{Binding MonitorOptions}"
+                                  SelectedValuePath="DeviceName"
+                                  SelectedValue="{Binding SelectedMonitorDevice}">
+                            <!-- ItemTemplate eksplisit: gaya dropdown memakai template kustom, dan DisplayMemberPath tidak
+                                 terbawa ke kotak pilihan sehingga yang tampil adalah teks bawaan record MonitorInfo. -->
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Appearance" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <!-- Pratinjau langsung: bentuk dan skala yang dipilih (island sungguhan di layar ikut berubah juga) -->
+                    <sc:IslandPreview Height="96" Margin="16,16,16,12"
+                                      Shape="{Binding PreviewShape}"
+                                      Scale="{Binding Scale}" />
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Shape"
+                                    Description="Dynamic floats just below the top edge. Notch sits flush against it.">
+                        <components:SegmentedControl Width="200" Height="32" AllowKeyboard="True" Items="Dynamic|Notch"
+                                                     SelectedIndex="{Binding ShapeIndex, Mode=TwoWay}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Scale" Description="Each shape remembers its own size." IsStacked="True">
+                        <sc:SettingsSlider Minimum="0.8" Maximum="1.15" TickFrequency="0.05" ValueFormat="{}{0:0}%" DisplayScale="100"
+                                           Value="{Binding Scale}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="When idle"
+                                    Description="Hide keeps the island out of sight until you move the pointer to the top edge of the screen. It still shows up for music, timers, notifications and recording.">
+                        <components:SegmentedControl Width="220" Height="32" AllowKeyboard="True" Items="Always visible|Hide"
+                                                     SelectedIndex="{Binding HideWhenIdleIndex, Mode=TwoWay}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Opacity" IsStacked="True">
+                        <sc:SettingsSlider Minimum="0.6" Maximum="1" TickFrequency="0.05" ValueFormat="{}{0:0}%" DisplayScale="100"
+                                           Value="{Binding Opacity}" />
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Tabs on island" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Tabs"
+                                    Description="Choose which tabs appear on the island. Home is always on. Blue means shown."
+                                    IsStacked="True">
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Style="{DynamicResource SettingsTabToggleStyle}" Tag="IconMusic" ToolTip="Music"
+                                      AutomationProperties.Name="Music tab" IsChecked="{Binding MusicTabEnabled}" />
+                            <CheckBox Style="{DynamicResource SettingsTabToggleStyle}" Tag="IconMixer" ToolTip="Mixer"
+                                      AutomationProperties.Name="Mixer tab" IsChecked="{Binding MixerTabEnabled}" />
+                            <CheckBox Style="{DynamicResource SettingsTabToggleStyle}" Tag="IconTimer" ToolTip="Timer"
+                                      AutomationProperties.Name="Timer tab" IsChecked="{Binding TimerTabEnabled}" />
+                            <CheckBox Style="{DynamicResource SettingsTabToggleStyle}" Tag="IconTodo" ToolTip="Tasks"
+                                      AutomationProperties.Name="Tasks tab" IsChecked="{Binding TodoTabEnabled}" />
+                            <CheckBox Style="{DynamicResource SettingsTabToggleStyle}" Tag="IconShelf" ToolTip="Shelf"
+                                      AutomationProperties.Name="Shelf tab" IsChecked="{Binding ShelfTabEnabled}" />
+                            <CheckBox Style="{DynamicResource SettingsTabToggleStyle}" Tag="IconCapture" ToolTip="Capture"
+                                      AutomationProperties.Name="Capture tab" IsChecked="{Binding CaptureTabEnabled}" />
+                        </StackPanel>
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Opening and closing" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Hover to expand"
+                                    Description="Open the island when the pointer rests on it.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding HoverToExpand}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Auto collapse"
+                                    Description="Close the island when the pointer leaves it.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding AutoCollapse}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Collapse delay" IsStacked="True">
+                        <sc:SettingsSlider Minimum="100" Maximum="2000" TickFrequency="100" ValueFormat="{}{0:0} ms"
+                                           Value="{Binding CollapseDelayMs}" />
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Automatic" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Auto-minimize when content is below"
+                                    Description="Shrink into a small notch when the island would cover tabs or text.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding AutoMinimizeWhenWindowBelow}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Hide when a fullscreen app is active"
+                                    Description="Keep out of the way of games and fullscreen video.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding HideWhenFullscreen}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Volume &amp; brightness on island"
+                                    Description="Show a short bar on the island when you change the volume or brightness.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding ShowVolumeBrightnessOverlay}"
+                                  AutomationProperties.Name="Volume and brightness on island" />
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Shelf" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Clipboard history"
+                                    Description="Keep your last 20 copied texts in the Shelf tab. They stay in memory only, nothing is saved to disk or sent anywhere. Copies marked private by password managers are skipped. Turning this off clears the list.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding ClipboardHistoryEnabled}" />
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="How to use" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Open" Description="Rest the pointer on the island to open it." />
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Switch tabs" Description="Scroll with the mouse wheel over the tab bar." />
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Keep files" Description="Drag files onto the island to park them in the Shelf." />
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Settings and hiding" Description="Right-click the tray icon to open settings or hide the island." />
+                    </StackPanel>
+                </Border>
+        </StackPanel>
+    </sc:SettingsPageLayout>
+</UserControl>

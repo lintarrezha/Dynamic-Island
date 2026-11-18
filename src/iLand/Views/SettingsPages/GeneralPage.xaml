@@ -1,0 +1,75 @@
+<UserControl x:Class="iLand.Views.SettingsPages.GeneralPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sc="clr-namespace:iLand.Views.SettingsControls">
+
+    <!--
+        Halaman General: mulai bersama Windows, animasi, suara notifikasi, lapor bug, folder log, dan cek pembaruan manual.
+        Gaya bernama (Style) memakai DynamicResource karena kamus SettingsTheme.xaml dimuat di SettingsWindow,
+        sedangkan halaman ini dibuat sebelum dipasang ke jendela (StaticResource tidak menemukannya).
+        Kontrol bergaya implisit (SettingsRow, SettingsSlider, SettingsPageLayout) aman.
+    -->
+
+    <sc:SettingsPageLayout Title="General" Subtitle="Startup, motion, sound and support.">
+        <StackPanel>
+                <TextBlock Text="Startup" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Start with Windows"
+                                    Description="Open iLand automatically when you sign in. No administrator rights needed.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding StartWithWindows}" />
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Motion" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Animations"
+                                    Description="Turn off to skip the big motion: the island changes size instantly and content only fades briefly. Also follows the Windows animation setting.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding AnimationsEnabled}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Animation duration"
+                                    Description="How long the island takes to open. Everything else scales with it."
+                                    IsStacked="True"
+                                    IsEnabled="{Binding AnimationsEnabled}">
+                        <sc:SettingsSlider Minimum="150" Maximum="800" TickFrequency="50" ValueFormat="{}{0:0} ms"
+                                           Value="{Binding AnimationDurationMs}" />
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Sound" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Play sound for notifications"
+                                    Description="Use the Windows notification sound when the island shows an alert.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding PlayNotificationSound}" />
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Support" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Report a bug" Description="{Binding ReportBugDescription}">
+                        <Button Content="Report a bug" Style="{DynamicResource SettingsSecondaryButtonStyle}"
+                                Command="{Binding ReportBugCommand}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Log files" Description="{Binding LogFilesDescription}">
+                        <Button Content="Open folder" Style="{DynamicResource SettingsSecondaryButtonStyle}"
+                                Command="{Binding OpenLogsFolderCommand}" />
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Updates" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Check for updates" Description="{Binding UpdateDescription}">
+                        <Button Content="{Binding UpdateButtonText}" Style="{DynamicResource SettingsSecondaryButtonStyle}"
+                                Command="{Binding CheckForUpdatesCommand}" />
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+        </StackPanel>
+    </sc:SettingsPageLayout>
+</UserControl>

@@ -18,7 +18,7 @@ public readonly record struct TabLayoutRequest(int ItemCount = 0, bool WideLayou
 ///
 /// Semua tinggi di bawah adalah tinggi TOTAL island, sudah termasuk header.
 /// Sisa ruang untuk isi tab = tinggi - HeaderAndPadding (lihat konstanta di bawah).
-/// Tinggi maksimum 290 masih muat di window 720 x 340 (ditambah celah atas 6 px = 296).
+/// Tinggi maksimum 290 masih muat di window island 840 x 390 pada skala 115% (lihat IslandProfile dan AppSettings).
 /// </summary>
 public static class TabLayout
 {
@@ -48,8 +48,11 @@ public static class TabLayout
     public const double TabBarItemHeight = 28;
 
     // ---- Lebar ----
-    // Lebar bawaan datang dari Settings (AppSettings.ExpandedWidth). Mode lirik di tab Music memakai lebar ini.
-    // Harus tetap <= lebar window (720).
+    // Lebar dasar island expanded (pada skala 100%). Ukuran island kini diatur lewat skala per bentuk di Settings
+    // (halaman Island), bukan lewat slider lebar. Mode lirik di tab Music memakai WideWidth.
+    public const double BaseWidth = 540;
+
+    // WideWidth harus tetap muat di window island (lihat IslandWindow.xaml, 840 x 390, termasuk skala 115%).
     public const double WideWidth = 640;
 
     // ---- Angka bantu untuk tinggi dinamis ----
@@ -68,7 +71,7 @@ public static class TabLayout
 
     /// <summary>Menghasilkan lebar dan tinggi island expanded untuk tab yang dipilih.</summary>
     /// <param name="tab">Tab yang sedang aktif.</param>
-    /// <param name="baseWidth">Lebar dasar dari Settings (AppSettings.ExpandedWidth).</param>
+    /// <param name="baseWidth">Lebar dasar (TabLayout.BaseWidth).</param>
     /// <param name="request">Jumlah item dan permintaan layout lebar (boleh dikosongkan).</param>
     public static TabSize GetSize(IslandTab tab, double baseWidth, TabLayoutRequest request = default)
     {

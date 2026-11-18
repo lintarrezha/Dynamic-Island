@@ -17,4 +17,10 @@ public interface IHotkeyService
 
     /// <summary>Daftarkan pintasan ke Windows. Panggil sekali saat aplikasi mulai.</summary>
     void Initialize();
+
+    /// <summary>
+    /// Diberi tahu oleh RecordingService saat perekaman mulai atau berhenti.
+    /// Selama merekam, pintasan Ctrl + Alt + R tetap terdaftar (untuk berhenti) walau tab Capture dimatikan.
+    /// </summary>
+    void SetRecordingInProgress(bool inProgress);
 }

@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using iLand.Helpers;
+
 namespace iLand.Models;
 
 /// <summary>
@@ -14,8 +17,7 @@ public class AppSettings
     public bool HideWhenFullscreen { get; set; } = true;
 
     // Island tidak ikut terekam di screenshot, rekaman layar, dan screen share.
-    // Jika dimatikan, island terlihat di tangkapan layar TETAPI smart collapse ikut mati
-    // (deteksi isi di belakang island butuh island tidak terekam).
+    // Independen dari smart collapse (AutoMinimizeWhenWindowBelow): keduanya bebas dinyalakan atau dimatikan.
     public bool HideFromScreenshots { get; set; } = true;
     public bool PlayNotificationSound { get; set; } = true;
 
@@ -55,10 +57,21 @@ public class AppSettings
     // ---- Appearance ----
     // Durasi membuka island dalam milidetik. Juga menjadi pengali semua gerak lain: nilai / 550 (lihat MotionTokens).
     public double AnimationDurationMs { get; set; } = 550;
+
+    /// <summary>
+    /// Animasi besar menyala (bawaan). Jika dimatikan, island memakai mode gerak berkurang yang sudah ada:
+    /// ukuran berubah langsung dan isi hanya crossfade singkat. Digabung dengan pengaturan animasi Windows
+    /// (salah satu mati = gerak berkurang). Field baru: file lama tanpa field ini terbaca sebagai true.
+    /// </summary>
+    public bool AnimationsEnabled { get; set; } = true;
+    // TIDAK DIPAKAI LAGI: lebar island kini konstanta TabLayout.BaseWidth, dan ukuran diatur lewat skala (DynamicScale / NotchScale).
+    // Properti ini dibiarkan agar settings.json lama tetap terbaca. Nilainya diabaikan.
     public double ExpandedWidth { get; set; } = 540;
     // TIDAK DIPAKAI LAGI: tinggi island expanded sekarang mengikuti tab (lihat Helpers/TabLayout.cs).
     // Properti ini dibiarkan agar settings.json lama tetap terbaca. Nilainya diabaikan.
     public double ExpandedHeight { get; set; } = 240;
+    // Radius sudut island expanded. Tidak ada kontrol di Settings lagi (bentuk Dynamic dan Notch punya sudut rancangan sendiri),
+    // tetapi nilai lama dari settings.json tetap dihormati oleh IslandProfile. Jangan dihapus tanpa migrasi.
     public double ExpandedCornerRadius { get; set; } = 28;
     public double Opacity { get; set; } = 1.0;
 
@@ -73,13 +86,102 @@ public class AppSettings
     private const int CurrentSettingsVersion = 2;
     private const double OldDefaultAnimationDurationMs = 400;
 
+    // ---- Bentuk dan skala island (Settings, halaman Island) ----
+
+    /// <summary>Batas skala island: 80% sampai 115%.</summary>
+    public const double MinIslandScale = 0.8;
+    public const double MaxIslandScale = 1.15;
+
+    /// <summary>Bentuk island: Dynamic (pill melayang) atau Notch (menempel di tepi atas). Disimpan sebagai teks di settings.json.</summary>
+    [JsonConverter(typeof(LenientEnumConverter<IslandShape>))]
+    public IslandShape IslandShape { get; set; } = IslandShape.Dynamic;
+
+    /// <summary>Skala island bentuk Dynamic (0,8 sampai 1,15). Tiap bentuk punya skala sendiri.</summary>
+    public double DynamicScale { get; set; } = 1.0;
+
+    /// <summary>Skala island bentuk Notch (0,8 sampai 1,15).</summary>
+    public double NotchScale { get; set; } = 1.0;
+
+    /// <summary>
+    /// "When idle: Hide" untuk bentuk Dynamic. Saat true dan island sedang diam (tanpa musik, timer, notifikasi, atau rekaman),
+    /// island tidak terlihat dan hanya muncul saat pointer menyentuh garis tipis di tepi atas tengah layar. Bawaan: selalu terlihat.
+    /// </summary>
+    public bool DynamicHideWhenIdle { get; set; }
+
+    /// <summary>"When idle: Hide" untuk bentuk Notch (tiap bentuk menyimpan pilihannya sendiri, sama seperti skala).</summary>
+    public bool NotchHideWhenIdle { get; set; }
+
+    // ---- Tab di island (Settings, halaman Island: "Tabs on island") ----
+
+    /// <summary>
+    /// Nama tab opsional yang dimatikan (nilai enum IslandTab sebagai teks, misalnya "Mixer").
+    /// Home tidak bisa dimatikan. Disimpan sebagai daftar yang DIMATIKAN (bukan yang menyala) supaya
+    /// settings.json lama tanpa field ini terbaca "semua tab menyala" dan tab baru di versi mendatang menyala otomatis.
+    /// </summary>
+    public List<string> DisabledTabs { get; set; } = new();
+
+    /// <summary>
+    /// Menampilkan bar singkat saat volume atau kecerahan berubah. Hanya menyimpan pilihan:
+    /// perilakunya dibuat di Prompt 7. Bawaan aktif.
+    /// </summary>
+    public bool ShowVolumeBrightnessOverlay { get; set; } = true;
+
+    /// <summary>True jika tab ini tampil di island. Home selalu tampil.</summary>
+    public bool IsTabEnabled(IslandTab tab)
+    {
+        return tab == IslandTab.Home || !DisabledTabs.Contains(tab.ToString());
+    }
+
+    /// <summary>Menyalakan atau mematikan satu tab opsional. Home diabaikan.</summary>
+    public void SetTabEnabled(IslandTab tab, bool enabled)
+    {
+        if (tab == IslandTab.Home)
+        {
+            return;
+        }
+
+        string name = tab.ToString();
+        if (enabled)
+        {
+            DisabledTabs.Remove(name);
+        }
+        else if (!DisabledTabs.Contains(name))
+        {
+            DisabledTabs.Add(name);
+        }
+    }
+
+    /// <summary>Skala untuk bentuk yang sedang dipilih. Hanya untuk dibaca (tidak disimpan ke settings.json).</summary>
+    [JsonIgnore]
+    public double ActiveScale => IslandShape == IslandShape.Notch ? NotchScale : DynamicScale;
+
+    /// <summary>Pilihan "When idle: Hide" untuk bentuk yang sedang dipilih. Hanya untuk dibaca (tidak disimpan ke settings.json).</summary>
+    [JsonIgnore]
+    public bool ActiveHideWhenIdle => IslandShape == IslandShape.Notch ? NotchHideWhenIdle : DynamicHideWhenIdle;
+
     /// <summary>
     /// Membatasi nilai agar tetap aman, misalnya jika file settings.json diedit manual.
-    /// Batas lebar mengikuti ukuran window island (720 x 340). Tinggi tidak lagi diatur dari sini (lihat TabLayout).
+    /// Ukuran window island (840 x 390) cukup untuk ukuran terbesar pada skala 115%. Tinggi tab tidak diatur dari sini (lihat TabLayout).
     /// </summary>
     public void Validate()
     {
         MigrateOldSettings();
+
+        if (!Enum.IsDefined(IslandShape))
+        {
+            IslandShape = IslandShape.Dynamic;
+        }
+
+        // Daftar tab yang dimatikan: buang nama tak dikenal dan Home, hilangkan duplikat, rapikan huruf besar-kecil.
+        DisabledTabs = (DisabledTabs ?? new List<string>())
+            .Select(name => Enum.TryParse(name, ignoreCase: true, out IslandTab tab) && Enum.IsDefined(tab) ? tab : (IslandTab?)null)
+            .Where(tab => tab.HasValue && tab.Value != IslandTab.Home)
+            .Select(tab => tab!.Value.ToString())
+            .Distinct()
+            .ToList();
+
+        DynamicScale = SanitizeScale(DynamicScale);
+        NotchScale = SanitizeScale(NotchScale);
 
         CollapseDelayMs = Math.Clamp(CollapseDelayMs, 100, 2000);
         AnimationDurationMs = Math.Clamp(AnimationDurationMs, 150, 800);
@@ -89,6 +191,11 @@ public class AppSettings
         Opacity = Math.Clamp(Opacity, 0.6, 1.0);
         MonitorDeviceName ??= string.Empty;
         LyricsOffsetMs = Math.Clamp(LyricsOffsetMs, -5000, 5000);
+    }
+
+    private static double SanitizeScale(double value)
+    {
+        return double.IsNaN(value) ? 1.0 : Math.Clamp(value, MinIslandScale, MaxIslandScale);
     }
 
     /// <summary>

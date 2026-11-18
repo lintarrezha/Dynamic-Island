@@ -1,0 +1,96 @@
+<UserControl x:Class="iLand.Views.SettingsPages.AboutPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sc="clr-namespace:iLand.Views.SettingsControls">
+
+    <!--
+        Halaman About: versi, folder data, tautan proyek, donasi, kredit, atribusi pihak ketiga, dan ringkasan privasi.
+        Gaya bernama (Style) memakai DynamicResource karena kamus SettingsTheme.xaml dimuat di SettingsWindow,
+        sedangkan halaman ini dibuat sebelum dipasang ke jendela (StaticResource tidak menemukannya).
+        Kontrol bergaya implisit (SettingsRow, SettingsSlider, SettingsPageLayout) aman.
+    -->
+
+    <sc:SettingsPageLayout Title="About" Subtitle="Version, your data and privacy.">
+        <StackPanel>
+            <TextBlock Text="App" Style="{DynamicResource SettingsSectionTitle}" />
+            <Border Style="{DynamicResource SettingsCard}">
+                <StackPanel>
+                    <sc:SettingsRow Title="iLand" Description="A Dynamic Island for Windows.">
+                        <TextBlock Text="{Binding AppVersion, StringFormat='Version {0}'}"
+                                   Style="{DynamicResource SettingsValueText}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Your data" Description="{Binding DataFolderPath}">
+                        <Button Content="Open folder" Style="{DynamicResource SettingsSecondaryButtonStyle}"
+                                Command="{Binding OpenDataFolderCommand}" />
+                    </sc:SettingsRow>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Project" Style="{DynamicResource SettingsSectionTitle}" />
+            <Border Style="{DynamicResource SettingsCard}">
+                <StackPanel>
+                    <sc:SettingsRow Title="Source code" Description="{Binding RepositoryDescription}">
+                        <Button Content="Open" Style="{DynamicResource SettingsSecondaryButtonStyle}"
+                                Command="{Binding OpenRepositoryCommand}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Website" Description="{Binding WebsiteDescription}">
+                        <Button Content="Open" Style="{DynamicResource SettingsSecondaryButtonStyle}"
+                                Command="{Binding OpenWebsiteCommand}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Support iLand" Description="{Binding DonationDescription}">
+                        <Button Content="Donate" Style="{DynamicResource SettingsSecondaryButtonStyle}"
+                                Command="{Binding OpenDonationCommand}" />
+                    </sc:SettingsRow>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Credits" Style="{DynamicResource SettingsSectionTitle}" />
+            <Border Style="{DynamicResource SettingsCard}">
+                <StackPanel>
+                    <sc:SettingsRow Title="LRCLIB"
+                                    Description="Lyrics come from LRCLIB (lrclib.net), a community lyrics service. Used only when you turn lyrics on.">
+                        <Button Content="Open" Style="{DynamicResource SettingsSecondaryButtonStyle}"
+                                Command="{Binding OpenLrclibCommand}" />
+                    </sc:SettingsRow>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Open-source components" Style="{DynamicResource SettingsSectionTitle}" />
+            <Border Style="{DynamicResource SettingsCard}" Padding="16,14">
+                <StackPanel>
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,0,0,12"
+                               Text="iLand is built with these open-source packages. Thank you to their authors." />
+                    <ItemsControl ItemsSource="{Binding ThirdPartyNotices}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="{Binding Name}" Style="{DynamicResource SettingsRowTitle}" />
+                                    <TextBlock Text="{Binding Summary}" Style="{DynamicResource SettingsRowDescription}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Privacy" Style="{DynamicResource SettingsSectionTitle}" />
+            <Border Style="{DynamicResource SettingsCard}" Padding="16,14">
+                <StackPanel>
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0"
+                               Text="iLand keeps everything on this PC and does not collect personal information. It uses the internet only when you turn on lyrics, or when you press Check for updates." />
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
+                               Text="Smart collapse looks at a small picture of the screen area behind the island. The picture is analysed in memory only and is never saved or sent." />
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
+                               Text="Screenshots and recordings are saved only in your own folders. The microphone stays off unless you turn it on." />
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
+                               Text="Lyrics are off by default. When you turn them on, the title, artist, album and length of the song you are playing are sent to lrclib.net to find its lyrics." />
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
+                               Text="Check for updates sends one plain request to GitHub, which can see your IP address like any website. Nothing else is sent, and it never runs by itself." />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </sc:SettingsPageLayout>
+</UserControl>

@@ -1,0 +1,42 @@
+<UserControl x:Class="iLand.Views.SettingsPages.CapturePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sc="clr-namespace:iLand.Views.SettingsControls">
+
+    <!--
+        Halaman Capture: suara rekam layar dan penyembunyian island dari tangkapan layar.
+        Gaya bernama (Style) memakai DynamicResource karena kamus SettingsTheme.xaml dimuat di SettingsWindow,
+        sedangkan halaman ini dibuat sebelum dipasang ke jendela (StaticResource tidak menemukannya).
+        Kontrol bergaya implisit (SettingsRow, SettingsSlider, SettingsPageLayout) aman.
+    -->
+
+    <sc:SettingsPageLayout Title="Capture" Subtitle="Screenshots and screen recordings.">
+        <StackPanel>
+                <TextBlock Text="Screen recording audio" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Record system sound"
+                                    Description="Include what plays through your speakers or headphones (all apps).">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding RecordSystemAudio}" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Record microphone"
+                                    Description="Off by default. The microphone is opened only while a recording is running.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding RecordMicrophone}" />
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Privacy" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Hide island from screenshots and recordings"
+                                    Description="Keeps the island out of screenshots, recordings and screen sharing in apps that support it. This does not affect smart collapse.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding HideFromScreenshots}" />
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+                <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="4,12,0,0"
+                           Text="Screenshots are saved to Pictures\iLand and recordings to Videos\Captures. The audio choices apply to the next recording." />
+        </StackPanel>
+    </sc:SettingsPageLayout>
+</UserControl>

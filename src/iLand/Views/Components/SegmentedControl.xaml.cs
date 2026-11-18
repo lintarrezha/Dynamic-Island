@@ -1,5 +1,7 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using iLand.Helpers;
@@ -24,6 +26,10 @@ public partial class SegmentedControl : UserControl
         new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
             (d, _) => ((SegmentedControl)d).OnSelectedIndexChanged()));
 
+    public static readonly DependencyProperty AllowKeyboardProperty = DependencyProperty.Register(
+        nameof(AllowKeyboard), typeof(bool), typeof(SegmentedControl),
+        new PropertyMetadata(false, (d, e) => ((SegmentedControl)d).OnAllowKeyboardChanged((bool)e.NewValue)));
+
     // Satu segmen: teks biasa (60%) dan teks aktif (hitam di atas indikator putih), saling crossfade.
     private sealed record Segment(TextBlock Normal, TextBlock Active);
 
@@ -42,10 +48,72 @@ public partial class SegmentedControl : UserControl
         set => SetValue(ItemsProperty, value);
     }
 
+    /// <summary>
+    /// True: kontrol bisa difokus dengan Tab dan panah kiri/kanan mengganti segmen (untuk jendela Settings).
+    /// Bawaan False: di island tidak ada fokus keyboard.
+    /// </summary>
+    public bool AllowKeyboard
+    {
+        get => (bool)GetValue(AllowKeyboardProperty);
+        set => SetValue(AllowKeyboardProperty, value);
+    }
+
     public int SelectedIndex
     {
         get => (int)GetValue(SelectedIndexProperty);
         set => SetValue(SelectedIndexProperty, value);
+    }
+
+    private void OnAllowKeyboardChanged(bool allow)
+    {
+        Focusable = allow;
+        IsTabStop = allow;
+        FocusVisualStyle = null; // cincin fokus digambar sendiri (FocusRing)
+
+        if (!allow)
+        {
+            FocusRing.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
+    {
+        base.OnGotKeyboardFocus(e);
+
+        if (AllowKeyboard)
+        {
+            FocusRing.Visibility = Visibility.Visible;
+        }
+    }
+
+    protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e)
+    {
+        base.OnLostKeyboardFocus(e);
+        FocusRing.Visibility = Visibility.Collapsed;
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+
+        if (!AllowKeyboard || !IsEnabled || _segments.Count == 0)
+        {
+            return;
+        }
+
+        int step = e.Key is Key.Left or Key.Up ? -1 : e.Key is Key.Right or Key.Down ? 1 : 0;
+        if (step == 0)
+        {
+            return;
+        }
+
+        int next = Math.Clamp(SelectedIndex + step, 0, _segments.Count - 1);
+        if (next != SelectedIndex)
+        {
+            SelectedIndex = next;
+        }
+
+        e.Handled = true;
     }
 
     private double SegmentWidth => _segments.Count == 0 ? 0 : SegmentsGrid.ActualWidth / _segments.Count;
@@ -78,6 +146,7 @@ public partial class SegmentedControl : UserControl
                 Style = (Style)Resources["SegmentButtonStyle"],
                 Content = content
             };
+            AutomationProperties.SetName(button, names[i]); // pembaca layar membaca nama segmen
             button.Click += (_, _) => SelectedIndex = index;
             button.MouseEnter += (_, _) =>
             {

@@ -13,8 +13,13 @@ namespace iLand.Services;
 ///
 /// Cara kerja deteksi "isi di bawah island":
 /// 1. Cek murah: adakah window aplikasi yang beririsan dengan area island? Jika tidak, selesai (kosong).
-/// 2. Jika ada, ambil gambar kecil dari area tepat di belakang island (hanya beberapa ribu piksel,
-///    dan island sendiri tidak ikut terekam). Gambar ini hanya dianalisis di memori:
+/// 2. Jika ada, ambil gambar kecil dari area tepat di belakang island (hanya beberapa ribu piksel).
+///    Island sendiri HARUS tidak ikut terambil, kalau tidak ia akan mendeteksi dirinya sendiri:
+///    - "Hide island from screenshots" ON : island sudah dikecualikan dari tangkapan layar, ambil langsung.
+///    - "Hide island from screenshots" OFF: island dikecualikan HANYA sesaat (puluhan milidetik) selama
+///      gambar diambil, lalu dikembalikan. Pengecualian ini tidak mengubah apa yang terlihat di monitor
+///      (hanya memengaruhi tangkapan layar), jadi tidak ada kedipan di layar.
+///    Dua pengaturan itu bebas satu sama lain. Gambar hanya dianalisis di memori:
 ///    tidak disimpan ke disk, tidak dikirim ke mana pun, dan langsung dibuang.
 /// 3. Analisis: adakah tepi vertikal yang tajam (tepi tab, huruf, ikon, tombol)? Area polos
 ///    atau gradasi halus (bagian kosong di title bar) tidak punya tepi tajam, jadi dianggap kosong.
@@ -33,6 +38,13 @@ public sealed class WindowContextService : IWindowContextService, IDisposable
 
     /// <summary>Jumlah tepi tajam minimum agar area dianggap berisi sesuatu.</summary>
     private const int MinEdgeCount = 20;
+
+    /// <summary>
+    /// Jeda (ms) antara mengecualikan island dan mengambil gambar, agar compositor Windows (DWM) sempat
+    /// menggambar ulang tanpa island. Dipakai hanya saat "Hide island from screenshots" mati.
+    /// Terlalu kecil: island ikut terambil (terlihat hitam polos, dianggap kosong). Setel jika perlu.
+    /// </summary>
+    private const int ExclusionSettleMs = 50;
 
     // Window milik sistem Windows yang bukan "aplikasi" dan harus diabaikan.
     private static readonly HashSet<string> IgnoredClassNames = new(StringComparer.Ordinal)
@@ -58,29 +70,53 @@ public sealed class WindowContextService : IWindowContextService, IDisposable
 
     private Rect _pillArea = Rect.Empty;
     private byte[] _pixelBuffer = Array.Empty<byte>();
-    private bool _isContentDetectionAvailable;
+    private bool _isContentDetectionEnabled;
+    private bool _isIslandExcludedFromCapture;
+
+    // Hasil pengambilan gambar sesaat yang terakhir (dipakai saat island tidak dikecualikan permanen).
+    private bool _lastTemporarySampleResult;
+    private bool _sampleInProgress;
+    private bool _disposed;
+    private bool _exclusionFailureLogged;
 
     public bool IsContentBelowIsland { get; private set; }
 
     public bool IsFullscreenAppActive { get; private set; }
 
-    public bool IsContentDetectionAvailable
+    public Func<bool, bool>? CaptureExclusionSetter { get; set; }
+
+    public bool IsContentDetectionEnabled
     {
-        get => _isContentDetectionAvailable;
+        get => _isContentDetectionEnabled;
         set
         {
-            if (_isContentDetectionAvailable == value)
+            if (_isContentDetectionEnabled == value)
             {
                 return;
             }
 
-            _isContentDetectionAvailable = value;
+            _isContentDetectionEnabled = value;
+            _lastTemporarySampleResult = false;
+            _logger.LogInformation("Content detection (smart collapse) {State}", value ? "enabled" : "disabled");
+            Evaluate();
+        }
+    }
 
-            if (!value)
+    public bool IsIslandExcludedFromCapture
+    {
+        get => _isIslandExcludedFromCapture;
+        set
+        {
+            if (_isIslandExcludedFromCapture == value)
             {
-                _logger.LogWarning("Content detection unavailable: smart collapse is disabled");
+                return;
             }
 
+            _isIslandExcludedFromCapture = value;
+
+            // Cara pengambilan gambar berganti: pertahankan hasil terakhir sampai pengambilan berikutnya
+            // supaya status mini tidak berkedip.
+            _lastTemporarySampleResult = IsContentBelowIsland;
             Evaluate();
         }
     }
@@ -163,11 +199,14 @@ public sealed class WindowContextService : IWindowContextService, IDisposable
         Evaluate();
     }
 
-    private void Evaluate()
+    // allowNewSample = false dipakai saat Evaluate dipanggil dari hasil pengambilan gambar sesaat,
+    // supaya tidak memulai pengambilan baru terus-menerus.
+    private void Evaluate(bool allowNewSample = true)
     {
         try
         {
-            bool windowBelow = CheckWindowBelowIsland();
+            // Smart collapse mati: tidak perlu memeriksa window di bawah island, dan timer pemantau tidak hidup.
+            bool windowBelow = _isContentDetectionEnabled && CheckWindowBelowIsland();
 
             // Timer pemantau hanya hidup selama ada window di bawah island.
             // Jika tidak ada window sama sekali, tidak ada pekerjaan berulang.
@@ -183,7 +222,29 @@ public sealed class WindowContextService : IWindowContextService, IDisposable
                 _contentWatchTimer.Stop();
             }
 
-            bool contentBelow = windowBelow && _isContentDetectionAvailable && CheckContentBelowIsland();
+            bool contentBelow;
+            if (!windowBelow)
+            {
+                _lastTemporarySampleResult = false;
+                contentBelow = false;
+            }
+            else if (_isIslandExcludedFromCapture)
+            {
+                // Island sudah tidak terekam: gambar bisa diambil langsung (perilaku lama).
+                contentBelow = CheckContentBelowIsland();
+            }
+            else
+            {
+                // Island terekam: ambil gambar dengan pengecualian sesaat (asinkron, beberapa puluh ms).
+                // Sementara menunggu, pakai hasil terakhir.
+                if (allowNewSample)
+                {
+                    StartTemporaryExclusionSample();
+                }
+
+                contentBelow = _lastTemporarySampleResult;
+            }
+
             bool fullscreen = CheckFullscreen();
 
             if (contentBelow == IsContentBelowIsland && fullscreen == IsFullscreenAppActive)
@@ -199,6 +260,86 @@ public sealed class WindowContextService : IWindowContextService, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to evaluate window context");
+        }
+    }
+
+    // ---- Pengambilan gambar dengan pengecualian sesaat (saat "Hide island from screenshots" mati) ----
+
+    private void StartTemporaryExclusionSample()
+    {
+        if (_sampleInProgress || _disposed)
+        {
+            return;
+        }
+
+        Func<bool, bool>? setter = CaptureExclusionSetter;
+        if (setter == null)
+        {
+            return;
+        }
+
+        bool excluded;
+        try
+        {
+            excluded = setter(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to exclude island from capture temporarily");
+            excluded = false;
+        }
+
+        if (!excluded)
+        {
+            // Windows menolak: tanpa ini island akan mendeteksi dirinya sendiri. Pertahankan hasil terakhir
+            // (jangan menebak). Catat sekali saja agar log tidak penuh.
+            if (!_exclusionFailureLogged)
+            {
+                _exclusionFailureLogged = true;
+                _logger.LogWarning("Windows refused temporary capture exclusion: smart collapse keeps its last result");
+            }
+
+            return;
+        }
+
+        _sampleInProgress = true;
+        _ = FinishTemporaryExclusionSampleAsync(setter);
+    }
+
+    private async Task FinishTemporaryExclusionSampleAsync(Func<bool, bool> setter)
+    {
+        try
+        {
+            // Beri waktu compositor menggambar ulang tanpa island. Continuation kembali ke UI thread.
+            await Task.Delay(ExclusionSettleMs);
+
+            if (!_disposed && _isContentDetectionEnabled && !_isIslandExcludedFromCapture)
+            {
+                _lastTemporarySampleResult = CheckContentBelowIsland();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to sample screen behind island");
+        }
+        finally
+        {
+            // Selalu kembalikan ke keadaan yang diminta pengaturan (bukan selalu "terlihat").
+            try
+            {
+                setter(_isIslandExcludedFromCapture);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to restore island capture exclusion");
+            }
+
+            _sampleInProgress = false;
+        }
+
+        if (!_disposed)
+        {
+            Evaluate(allowNewSample: false);
         }
     }
 
@@ -319,7 +460,8 @@ public sealed class WindowContextService : IWindowContextService, IDisposable
 
     /// <summary>
     /// Menyalin sebagian kecil layar ke _pixelBuffer (format BGRA, 4 byte per piksel).
-    /// Window island sudah dikecualikan dari tangkapan layar, jadi tidak ikut terambil.
+    /// Dipanggil hanya saat island dikecualikan dari tangkapan layar (permanen atau sesaat),
+    /// jadi island tidak ikut terambil.
     /// </summary>
     private bool CaptureScreenRegion(int x, int y, int width, int height)
     {
@@ -450,6 +592,7 @@ public sealed class WindowContextService : IWindowContextService, IDisposable
     // Lepas semua hook dan timer agar tidak ada yang tertinggal di Windows.
     public void Dispose()
     {
+        _disposed = true;
         _debounceTimer.Stop();
         _debounceTimer.Tick -= OnDebounceTick;
         _contentWatchTimer.Stop();

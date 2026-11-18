@@ -26,8 +26,15 @@ public sealed class HotkeyService : IHotkeyService, IDisposable
 
     private readonly ILogger<HotkeyService> _logger;
     private readonly INotificationService _notificationService;
+    private readonly ISettingsService _settingsService;
     private readonly List<int> _registeredIds = new();
     private HwndSource? _source;
+
+    // Pintasan yang terakhir DIMINTA terdaftar. Dipakai agar pendaftaran (dan pesan "Shortcut unavailable" bila gagal)
+    // hanya terjadi saat keadaannya berubah, bukan di setiap perubahan pengaturan lain.
+    private bool _areaHotkeyWanted;
+    private bool _recordingHotkeyWanted;
+    private bool _recordingInProgress;
 
     public event EventHandler? CaptureAreaRequested;
 
@@ -37,10 +44,14 @@ public sealed class HotkeyService : IHotkeyService, IDisposable
 
     public string ToggleRecordingShortcutText => "Ctrl + Alt + R";
 
-    public HotkeyService(ILogger<HotkeyService> logger, INotificationService notificationService)
+    public HotkeyService(
+        ILogger<HotkeyService> logger,
+        INotificationService notificationService,
+        ISettingsService settingsService)
     {
         _logger = logger;
         _notificationService = notificationService;
+        _settingsService = settingsService;
     }
 
     public void Initialize()
@@ -60,8 +71,72 @@ public sealed class HotkeyService : IHotkeyService, IDisposable
         _source = new HwndSource(parameters);
         _source.AddHook(WndProc);
 
-        Register(CaptureAreaHotkeyId, VirtualKeyS, CaptureAreaShortcutText);
-        Register(ToggleRecordingHotkeyId, VirtualKeyR, ToggleRecordingShortcutText);
+        // Pintasan capture hanya terdaftar selama tab Capture menyala (lihat ApplyHotkeys).
+        _settingsService.SettingsChanged += OnSettingsChanged;
+        ApplyHotkeys();
+    }
+
+    public void SetRecordingInProgress(bool inProgress)
+    {
+        if (_recordingInProgress == inProgress)
+        {
+            return;
+        }
+
+        _recordingInProgress = inProgress;
+        ApplyHotkeys();
+    }
+
+    private void OnSettingsChanged(object? sender, EventArgs e)
+    {
+        ApplyHotkeys();
+    }
+
+    /// <summary>
+    /// Mendaftarkan atau melepas pintasan sesuai tab Capture. Ctrl + Alt + S ikut tab Capture.
+    /// Ctrl + Alt + R ikut tab Capture, kecuali sedang merekam (supaya perekaman tetap bisa dihentikan dari keyboard).
+    /// </summary>
+    private void ApplyHotkeys()
+    {
+        if (_source is null)
+        {
+            return;
+        }
+
+        bool captureEnabled = _settingsService.Current.IsTabEnabled(IslandTab.Capture);
+
+        SetHotkey(CaptureAreaHotkeyId, VirtualKeyS, CaptureAreaShortcutText, captureEnabled, ref _areaHotkeyWanted);
+        SetHotkey(ToggleRecordingHotkeyId, VirtualKeyR, ToggleRecordingShortcutText,
+            captureEnabled || _recordingInProgress, ref _recordingHotkeyWanted);
+    }
+
+    private void SetHotkey(int id, uint virtualKey, string shortcutText, bool wanted, ref bool currentlyWanted)
+    {
+        if (wanted == currentlyWanted)
+        {
+            return;
+        }
+
+        currentlyWanted = wanted;
+
+        if (wanted)
+        {
+            Register(id, virtualKey, shortcutText);
+        }
+        else
+        {
+            Unregister(id, shortcutText);
+        }
+    }
+
+    private void Unregister(int id, string shortcutText)
+    {
+        // Hanya melepas pintasan yang memang berhasil terdaftar.
+        if (_source is not null && _registeredIds.Remove(id))
+        {
+            NativeMethods.UnregisterHotKey(_source.Handle, id);
+            _logger.LogInformation("Global shortcut released: {Shortcut}", shortcutText);
+        }
     }
 
     /// <summary>Mendaftarkan satu pintasan Ctrl + Alt + tombol. Jika gagal, pengguna diberi tahu.</summary>
@@ -114,6 +189,8 @@ public sealed class HotkeyService : IHotkeyService, IDisposable
 
     public void Dispose()
     {
+        _settingsService.SettingsChanged -= OnSettingsChanged;
+
         if (_source is null)
         {
             return;

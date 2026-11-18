@@ -8,6 +8,8 @@
         Latar pill TabBarBrush, indikator putih meluncur ke segmen terpilih (perilaku sama dengan indikator tab bar).
         Isi segmen dibuat dari properti Items (dipisah tanda |) di SegmentedControl.xaml.cs.
         Setiap segmen adalah Button, jadi klik tidak dianggap klik pada island.
+        AllowKeyboard (bawaan False, karena island tidak menerima keyboard): jika True, kontrol bisa difokus dengan Tab,
+        panah kiri/kanan mengganti segmen, dan cincin fokus tampil. Dipakai di jendela Settings.
     -->
     <UserControl.Resources>
         <Style x:Key="SegmentButtonStyle" TargetType="Button">
@@ -25,15 +27,21 @@
         </Style>
     </UserControl.Resources>
 
-    <Border Background="{StaticResource TabBarBrush}" CornerRadius="15" Padding="3">
-        <Grid>
-            <Border x:Name="Indicator" Background="{StaticResource TextPrimaryBrush}" CornerRadius="12"
-                    HorizontalAlignment="Left" Width="0" Visibility="Collapsed">
-                <Border.RenderTransform>
-                    <TranslateTransform />
-                </Border.RenderTransform>
-            </Border>
-            <Grid x:Name="SegmentsGrid" SizeChanged="SegmentsGrid_SizeChanged" />
-        </Grid>
-    </Border>
+    <Grid>
+        <Border Background="{StaticResource TabBarBrush}" CornerRadius="15" Padding="3">
+            <Grid>
+                <Border x:Name="Indicator" Background="{StaticResource TextPrimaryBrush}" CornerRadius="12"
+                        HorizontalAlignment="Left" Width="0" Visibility="Collapsed">
+                    <Border.RenderTransform>
+                        <TranslateTransform />
+                    </Border.RenderTransform>
+                </Border>
+                <Grid x:Name="SegmentsGrid" SizeChanged="SegmentsGrid_SizeChanged" />
+            </Grid>
+        </Border>
+
+        <!-- Cincin fokus keyboard. Hanya tampil jika AllowKeyboard = True dan kontrol difokus lewat keyboard (Tab). -->
+        <Border x:Name="FocusRing" CornerRadius="17" BorderThickness="2" Margin="-2"
+                BorderBrush="{StaticResource AccentBrush}" IsHitTestVisible="False" Visibility="Collapsed" />
+    </Grid>
 </UserControl>

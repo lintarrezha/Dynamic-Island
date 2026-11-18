@@ -25,7 +25,8 @@ namespace iLand.Helpers;
 /// JARAK GESER (piksel, tidak ikut diskalakan): judul tab 6 px, isi tab yang muncul bertahap 8 px (ke atas, vertikal).
 /// Panel tab berganti dengan crossfade murni (tanpa geser kiri-kanan).
 ///
-/// MODE GERAK BERKURANG: jika efek animasi Windows dimatikan (SystemParameters.ClientAreaAnimation = false),
+/// MODE GERAK BERKURANG: jika efek animasi Windows dimatikan (SystemParameters.ClientAreaAnimation = false)
+/// ATAU toggle "Animations" di Settings dimatikan (AnimationsEnabled = false),
 /// semua gerak diganti: ukuran berubah langsung, isi crossfade 120 ms, tanpa geser, tanpa skala tombol.
 ///
 /// PENGALI GLOBAL: AppSettings.AnimationDurationMs (slider "Animation duration" di Settings) dibagi 550.
@@ -53,6 +54,18 @@ public static class MotionTokens
 
     /// <summary>Baris aplikasi di tab Mixer masuk atau keluar (tinggi + fade). Tidak ikut pengali Settings.</summary>
     public const double RowMs = 220;
+
+    // ---- Jendela Settings ----
+
+    /// <summary>Toggle di Settings: bulatan bergeser dan warna jalur berubah. Dipakai langsung dari XAML (x:Static).</summary>
+    public const double SettingsToggleMs = 160;
+
+    public static Duration SettingsToggleDuration => new(TimeSpan.FromMilliseconds(SettingsToggleMs));
+
+    /// <summary>Pindah halaman di Settings: halaman lama memudar keluar sambil halaman baru memudar masuk (tanpa geser).</summary>
+    public const double SettingsPageFadeMs = 150;
+
+    public static Duration SettingsPageFadeDuration => new(TimeSpan.FromMilliseconds(SettingsPageFadeMs));
 
     // ---- Shelf: zona drop, tile masuk dan keluar ----
 
@@ -89,7 +102,13 @@ public static class MotionTokens
     // ---- Mode gerak berkurang ----
 
     /// <summary>True jika pengguna mematikan efek animasi Windows (Settings, Accessibility, Visual effects). Dibaca setiap dipakai.</summary>
-    public static bool ReducedMotion => !SystemParameters.ClientAreaAnimation;
+    public static bool ReducedMotion => !AnimationsEnabled || !SystemParameters.ClientAreaAnimation;
+
+    /// <summary>
+    /// Pilihan "Animations" di Settings (General). Diatur oleh SettingsService setiap pengaturan dimuat atau berubah.
+    /// False = gerak berkurang, sama seperti saat efek animasi Windows dimatikan.
+    /// </summary>
+    public static bool AnimationsEnabled { get; set; } = true;
 
     /// <summary>Lama crossfade pengganti semua gerak saat mode gerak berkurang.</summary>
     public const double ReducedMotionMs = 120;

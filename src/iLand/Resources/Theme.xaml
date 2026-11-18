@@ -15,7 +15,18 @@
     <SolidColorBrush x:Key="SurfaceBrush" Color="#151517" />
     <SolidColorBrush x:Key="CardBrush" Color="#1C1C1E" />
     <SolidColorBrush x:Key="HoverBrush" Color="#2C2C2E" />
-    <SolidColorBrush x:Key="TabBarBrush" Color="#161618" />   <!-- latar pill tab bar di header -->
+    <SolidColorBrush x:Key="TabBarBrush" Color="#161618" />   <!-- latar pill tab bar di header (dipakai SegmentedControl) -->
+
+    <!-- Pill tab bar di island: kaca tipis. Isinya putih transparan (tanpa blur, murah), sehingga cahaya aksen sampul
+         di belakangnya ikut terlihat saat musik main. Tanpa aksen tampilannya hampir sama dengan TabBarBrush. -->
+    <LinearGradientBrush x:Key="TabBarGlassBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#24FFFFFF" Offset="0" />
+        <GradientStop Color="#12FFFFFF" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="TabBarGlassBorderBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#33FFFFFF" Offset="0" />
+        <GradientStop Color="#0DFFFFFF" Offset="1" />
+    </LinearGradientBrush>
 
     <!-- ===== Tiga tingkat putih: 100%, 60%, 35% ===== -->
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFFFFF" />     <!-- 100% -->

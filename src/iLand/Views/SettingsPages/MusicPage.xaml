@@ -1,0 +1,26 @@
+<UserControl x:Class="iLand.Views.SettingsPages.MusicPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sc="clr-namespace:iLand.Views.SettingsControls">
+
+    <!--
+        Halaman Music dan Lyrics. Prompt 7 menambah geser waktu lirik, visualizer, dan lainnya. Toggle Lyrics adalah satu-satunya sumber pengaturan lirik.
+        Gaya bernama (Style) memakai DynamicResource karena kamus SettingsTheme.xaml dimuat di SettingsWindow,
+        sedangkan halaman ini dibuat sebelum dipasang ke jendela (StaticResource tidak menemukannya).
+        Kontrol bergaya implisit (SettingsRow, SettingsSlider, SettingsPageLayout) aman.
+    -->
+
+    <sc:SettingsPageLayout Title="Music &amp; Lyrics" Subtitle="Lyrics for the song you are playing.">
+        <StackPanel>
+                <TextBlock Text="Lyrics" Style="{DynamicResource SettingsSectionTitle}" />
+                <Border Style="{DynamicResource SettingsCard}">
+                    <StackPanel>
+                    <sc:SettingsRow Title="Lyrics"
+                                    Description="Show synced lyrics for the song you are playing. When on, the title, artist, album and length of the current song are sent to lrclib.net, and nothing else. Off by default. Found lyrics are cached on this PC.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding LyricsEnabled}" />
+                    </sc:SettingsRow>
+                    </StackPanel>
+                </Border>
+        </StackPanel>
+    </sc:SettingsPageLayout>
+</UserControl>

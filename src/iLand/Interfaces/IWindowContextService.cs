@@ -18,11 +18,27 @@ public interface IWindowContextService
     bool IsFullscreenAppActive { get; }
 
     /// <summary>
-    /// Deteksi isi hanya bisa berjalan jika window island sudah disembunyikan dari tangkapan layar
-    /// (kalau tidak, island akan "melihat dirinya sendiri"). Diatur oleh window island.
-    /// Jika false, island tidak akan pernah masuk mode mini.
+    /// Smart collapse (deteksi isi di belakang island) menyala atau mati. Mengikuti pengaturan
+    /// "Auto-minimize when content is below" dan TIDAK bergantung pada "Hide island from screenshots".
+    /// Jika false, tidak ada pengambilan gambar dan tidak ada timer pemantau.
     /// </summary>
-    bool IsContentDetectionAvailable { get; set; }
+    bool IsContentDetectionEnabled { get; set; }
+
+    /// <summary>
+    /// True jika island SAAT INI sudah dikecualikan dari tangkapan layar secara permanen
+    /// (pengaturan "Hide island from screenshots" aktif dan Windows menerimanya).
+    /// Jika true, gambar area di belakang island bisa diambil kapan saja tanpa melihat island.
+    /// Jika false, service mengecualikan island hanya sesaat selama pengambilan gambar
+    /// (lihat CaptureExclusionSetter). Diatur oleh window island.
+    /// </summary>
+    bool IsIslandExcludedFromCapture { get; set; }
+
+    /// <summary>
+    /// Fungsi dari window island untuk mengecualikan (true) atau tidak (false) island dari tangkapan layar.
+    /// Mengembalikan false jika Windows menolak. Dipakai service untuk pengecualian sesaat
+    /// saat pengaturan "Hide island from screenshots" mati. Harus dipanggil dari UI thread.
+    /// </summary>
+    Func<bool, bool>? CaptureExclusionSetter { get; set; }
 
     /// <summary>Dipanggil saat salah satu nilai di atas berubah.</summary>
     event EventHandler? Changed;

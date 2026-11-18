@@ -67,6 +67,9 @@ public sealed class RecordingService : IRecordingService, IDisposable
 
         _hotkeyService.ToggleRecordingRequested += OnToggleRequested;
 
+        // Selama merekam, pintasan Ctrl + Alt + R harus tetap aktif walau tab Capture dimatikan (lihat HotkeyService).
+        StateChanged += (_, _) => _hotkeyService.SetRecordingInProgress(IsRecording);
+
         // Dilepas lagi di Dispose (event statis harus selalu dilepas).
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
     }

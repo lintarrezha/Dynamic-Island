@@ -25,7 +25,7 @@ namespace iLand.Views;
 public partial class IslandWindow : Window
 {
     // Ukuran bentuk hitam yang terlihat pada tiap mode.
-    private const double CollapsedWidth = 200;
+    private const double CollapsedWidth = IslandProfile.PillWidth;
 
     // Lebar pill di mode media. Area deteksi smart collapse TETAP memakai CollapsedWidth (200), jadi lebar pill
     // yang berubah-ubah tidak membuat island bolak-balik antara normal dan mini.
@@ -37,12 +37,11 @@ public partial class IslandWindow : Window
 
     // Lebar tujuan terakhir pill normal. Dipakai agar animasi lebar tidak diulang bila tujuannya sama.
     private double _lastPillTarget = double.NaN;
-    private const double CollapsedHeight = 34;
+    private const double CollapsedHeight = IslandProfile.PillHeight;
 
     // Mode mini: notch kecil menempel di tepi atas (sisi atas rata, hanya sudut bawah yang melengkung).
     private const double MiniWidth = 72;
     private const double MiniHeight = 10;
-    private const double MiniBottomRadius = 7;
     // Mode notifikasi: pill sedang yang muncul sebentar lalu hilang.
     private const double NotificationWidth = 330;
     private const double NotificationHeight = 58;
@@ -51,8 +50,7 @@ public partial class IslandWindow : Window
     private const double RecordingWidth = 250;
     private const double RecordingHeight = 44;
 
-    // Celah antara tepi atas layar dan island (pada mode normal, notifikasi, dan expanded).
-    private const double TopGap = 6;
+    // Celah atas dan radius sudut tiap mode ditentukan IslandProfile (bergantung pada bentuk Dynamic atau Notch).
 
     // CornerRadius tidak bisa dianimasikan langsung di WPF.
     // Solusinya: buat dua property angka sendiri (DependencyProperty) yang bisa dianimasikan,
@@ -71,6 +69,20 @@ public partial class IslandWindow : Window
             typeof(double),
             typeof(IslandWindow),
             new PropertyMetadata(CollapsedHeight / 2, OnIslandRadiusChanged));
+
+    // Radius lengkung luar ("telinga") di sudut atas bentuk Notch. Nol pada bentuk Dynamic dan mode mini.
+    public static readonly DependencyProperty IslandEarRadiusProperty =
+        DependencyProperty.Register(
+            nameof(IslandEarRadius),
+            typeof(double),
+            typeof(IslandWindow),
+            new PropertyMetadata(0.0, OnIslandRadiusChanged));
+
+    public double IslandEarRadius
+    {
+        get => (double)GetValue(IslandEarRadiusProperty);
+        set => SetValue(IslandEarRadiusProperty, value);
+    }
 
     public double IslandTopRadius
     {
@@ -102,9 +114,17 @@ public partial class IslandWindow : Window
     /// </summary>
     private void UpdateIslandClip()
     {
+        var bounds = new Rect(0, 0, Island.ActualWidth, Island.ActualHeight);
+
+        // Bentuk Notch punya geometri sendiri (badan rata di atas + telinga), bukan persegi membulat.
+        if (_settingsService.Current.IslandShape == IslandShape.Notch)
+        {
+            UpdateNotchVisuals(bounds);
+            return;
+        }
+
         // Dipanggil sangat sering saat animasi (ukuran dan radius berubah tiap frame). Setiap penugasan ke
         // RectangleGeometry membuat WPF menggambar ulang, jadi hanya diisi bila nilainya benar-benar berubah.
-        var bounds = new Rect(0, 0, Island.ActualWidth, Island.ActualHeight);
         if (_islandClip.Rect != bounds)
         {
             _islandClip.Rect = bounds;
@@ -119,6 +139,69 @@ public partial class IslandWindow : Window
         }
     }
 
+    /// <summary>
+    /// Bentuk Notch: klip isi berbentuk badan rata di atas (sudut bawah membulat), dan bentuk hitam yang terlihat
+    /// digambar NotchShape (badan + telinga). Dipanggil tiap frame animasi, geometrinya kecil dan dibekukan.
+    /// </summary>
+    private void UpdateNotchVisuals(Rect bounds)
+    {
+        double bottom = IslandBottomRadius;
+
+        Island.Clip = IslandShapeGeometry.FlatTopBody(bounds.Width, bounds.Height, bottom);
+        NotchShape.Data = IslandShapeGeometry.NotchWithEars(bounds.Width, bounds.Height, bottom, IslandEarRadius);
+        NotchShape.Margin = Island.Margin; // celah atas ikut animasi Island
+    }
+
+    /// <summary>
+    /// Menyiapkan tampilan sesuai bentuk: Dynamic memakai latar Border dan klip persegi membulat,
+    /// Notch memakai NotchShape (latar Border transparan) dan klip badan Notch.
+    /// </summary>
+    private void ApplyShapeVisuals()
+    {
+        bool isNotch = _settingsService.Current.IslandShape == IslandShape.Notch;
+
+        if (isNotch)
+        {
+            Island.Background = Brushes.Transparent;
+            NotchShape.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            Island.SetResourceReference(Border.BackgroundProperty, "IslandBrush");
+            NotchShape.Visibility = Visibility.Collapsed;
+            Island.Clip = _islandClip;
+        }
+
+        UpdateIslandClip();
+    }
+
+    // Bentuk dan skala yang sudah diterapkan (supaya posisi dan zona hanya dihitung ulang bila berubah).
+    private IslandShape? _appliedShape;
+    private double _appliedScale = double.NaN;
+
+    /// <summary>
+    /// Menerapkan bentuk dan skala dari Settings: skala lewat LayoutTransform di akar window (seluruh isi ikut),
+    /// bentuk lewat ApplyShapeVisuals. Mengembalikan true jika ada yang berubah.
+    /// </summary>
+    private bool ApplyIslandScale()
+    {
+        AppSettings settings = _settingsService.Current;
+        double scale = settings.ActiveScale;
+
+        if (_appliedShape == settings.IslandShape && Math.Abs(scale - _appliedScale) < 0.0001)
+        {
+            return false;
+        }
+
+        _appliedShape = settings.IslandShape;
+        _appliedScale = scale;
+
+        IslandScale.ScaleX = scale;
+        IslandScale.ScaleY = scale;
+        ApplyShapeVisuals();
+        return true;
+    }
+
     private readonly IslandViewModel _viewModel;
     private readonly ISettingsService _settingsService;
     private readonly IMonitorService _monitorService;
@@ -128,7 +211,8 @@ public partial class IslandWindow : Window
     private bool? _appliedHideFromCapture; // null = belum pernah diterapkan
 
     // Lebar bingkai hover tambahan di kiri, kanan, dan bawah island yang sedang expanded (piksel).
-    // Harus muat di window: lebar island maksimum 640 + 2 x 12 = 664 <= 720, tinggi 290 + 6 + 12 = 308 <= 340.
+    // Harus muat di window (840 x 390) pada skala 115%: lebar maksimum (640 + 2 x 12 halo + 2 x 20 telinga) x 1,15 = 800 <= 840,
+    // tinggi (290 + 6 + 12) x 1,15 = 354 <= 390.
     private const double HoverHaloPx = 12;
 
     // true = pointer keluar dari island selagi tombol mouse masih ditekan, dan keputusan "pointer keluar"
@@ -190,6 +274,7 @@ public partial class IslandWindow : Window
         // Awalnya hanya panel tab yang terpilih yang terlihat.
         _shownTab = viewModel.SelectedTab;
         _shownTitle = viewModel.SelectedTabTitle;
+        ApplyTabBarVisibility(); // sembunyikan ikon tab yang dimatikan di Settings
         ShowOnlyTab(_shownTab); // juga menaruh indikator tab di item aktif
 
         // ClipToBounds pada Border hanya memotong berbentuk persegi, jadi isi bisa bocor di sudut membulat.
@@ -198,6 +283,8 @@ public partial class IslandWindow : Window
         Island.SizeChanged += (_, _) => UpdateIslandClip();
 
         Island.Opacity = _settingsService.Current.Opacity;
+        NotchShape.Opacity = _settingsService.Current.Opacity;
+        ApplyIslandScale(); // bentuk dan skala dari Settings
 
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.Lyrics.PropertyChanged += OnLyricsPropertyChanged;
@@ -252,6 +339,7 @@ public partial class IslandWindow : Window
         LostMouseCapture -= OnWindowLostMouseCapture;
         IsVisibleChanged -= OnWindowIsVisibleChanged;
         _viewModel.PointerInsideProbe = null;
+        _windowContext.CaptureExclusionSetter = null;
         base.OnClosed(e);
     }
 
@@ -364,11 +452,16 @@ public partial class IslandWindow : Window
         // Beri tahu service: di sinilah pill island NORMALNYA berada.
         // Area ini selalu sama (ukuran pill normal), apa pun mode island saat ini.
         // Dengan begitu mode mini tidak "mengecek dirinya sendiri" dan tidak terjadi bolak-balik.
-        double pillWidth = CollapsedWidth * scale;
-        double pillHeight = CollapsedHeight * scale;
+        // Ukuran pill normal ikut skala island (80 sampai 115%) dan celah atas ikut bentuk (Dynamic 6, Notch 0).
+        // Zona hanya berubah saat pengguna mengubah bentuk atau skala, jadi tidak bolak-balik.
+        AppSettings settings = _settingsService.Current;
+        double pillScale = scale * settings.ActiveScale;
+        double pillWidth = CollapsedWidth * pillScale;
+        double pillHeight = CollapsedHeight * pillScale;
+        double topGap = IslandProfile.TopGapFor(settings.IslandShape, IslandVisualMode.Normal) * pillScale;
         var pillArea = new Rect(
             monitor.Bounds.Left + (monitor.Bounds.Width - pillWidth) / 2,
-            monitor.Bounds.Top + TopGap * scale,
+            monitor.Bounds.Top + topGap,
             pillWidth,
             pillHeight);
         _windowContext.SetIslandZone(pillArea);
@@ -389,6 +482,7 @@ public partial class IslandWindow : Window
             case nameof(IslandViewModel.IsMini):
             case nameof(IslandViewModel.IsNotificationVisible):
             case nameof(IslandViewModel.IsRecording):
+            case nameof(IslandViewModel.IsIdleHidden):
                 ApplyState();
                 break;
 
@@ -498,7 +592,8 @@ public partial class IslandWindow : Window
         bool isNormalPill = !_viewModel.IsExpanded
                             && !_viewModel.IsNotificationVisible
                             && !_viewModel.IsRecording
-                            && !_viewModel.IsMini;
+                            && !_viewModel.IsMini
+                            && !_viewModel.IsIdleHidden;
         if (!isNormalPill)
         {
             return;
@@ -585,7 +680,46 @@ public partial class IslandWindow : Window
     }
 
     /// <summary>
-    /// Menggeser bentuk putih di tab bar ke item tab yang aktif. Posisi dihitung dari indeks enum,
+    /// Posisi urut tab di tab bar = jumlah tab yang tampil sebelum tab ini. Berbeda dari indeks enum jika ada tab dimatikan.
+    /// (Panel di TabHost tetap memakai indeks enum.)
+    /// </summary>
+    private int GetVisibleTabIndex(IslandTab tab)
+    {
+        int index = 0;
+        for (int i = 0; i < (int)tab; i++)
+        {
+            if (_settingsService.Current.IsTabEnabled((IslandTab)i))
+            {
+                index++;
+            }
+        }
+
+        return index;
+    }
+
+    /// <summary>
+    /// Menampilkan hanya ikon tab yang menyala di Settings ("Tabs on island"). Urutan anak TabButtons sama dengan enum IslandTab.
+    /// Jika hanya Home yang tersisa, tab bar disembunyikan. Indikator dipasang ulang di posisi barunya tanpa animasi.
+    /// </summary>
+    private void ApplyTabBarVisibility()
+    {
+        int visibleCount = 0;
+        for (int i = 0; i < TabButtons.Children.Count; i++)
+        {
+            bool enabled = _settingsService.Current.IsTabEnabled((IslandTab)i);
+            TabButtons.Children[i].Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+            if (enabled)
+            {
+                visibleCount++;
+            }
+        }
+
+        TabBar.Visibility = visibleCount > 1 ? Visibility.Visible : Visibility.Collapsed;
+        MoveTabIndicator(_shownTab, animate: false);
+    }
+
+    /// <summary>
+    /// Menggeser bentuk putih di tab bar ke item tab yang aktif. Posisi dihitung dari posisi urut item yang tampil,
     /// karena setiap item berukuran tetap dan tanpa jarak (TabLayout.TabBarItemWidth).
     /// Berpindah dekat memakai kurva dengan pantulan kecil. Berpindah jauh memakai kurva tanpa pantulan,
     /// supaya indikator tidak menonjol keluar dari pill di ujung tab bar.
@@ -593,7 +727,7 @@ public partial class IslandWindow : Window
     private void MoveTabIndicator(IslandTab tab, bool animate)
     {
         var shift = (TranslateTransform)TabIndicator.RenderTransform;
-        double targetX = (int)tab * TabLayout.TabBarItemWidth;
+        double targetX = GetVisibleTabIndex(tab) * TabLayout.TabBarItemWidth;
 
         // Mode gerak berkurang: indikator pindah langsung (ikonnya tetap crossfade).
         if (!animate || MotionTokens.ReducedMotion)
@@ -708,7 +842,7 @@ public partial class IslandWindow : Window
         }
 
         bool reduced = MotionTokens.ReducedMotion;
-        TimeSpan? delay = reduced ? null : Scaled(MotionTokens.ContentInDelayMs);
+        TimeSpan delay = reduced ? TimeSpan.Zero : Scaled(MotionTokens.ContentInDelayMs);
 
         // Panel yang masih terlihat berarti sedang di tengah gerak keluar (pengguna kembali ke tab itu).
         // Memudar masuk dilanjutkan dari transparansi saat ini tanpa lompat dan tanpa jeda.
@@ -724,11 +858,11 @@ public partial class IslandWindow : Window
             panel.Visibility = Visibility.Visible;
 
             // Elemen utama isi tab muncul bertahap (naik 8 px sambil memudar masuk), dimulai bersama panel.
-            StartContentStagger(index, panel, delay ?? TimeSpan.Zero);
+            StartContentStagger(index, panel, delay);
         }
         else
         {
-            delay = null;
+            delay = TimeSpan.Zero;
         }
 
         panel.IsHitTestVisible = true;
@@ -914,32 +1048,43 @@ public partial class IslandWindow : Window
     }
 
     /// <summary>
-    /// Menerapkan pilihan "Hide island from screenshots".
-    /// Hanya memanggil Windows jika pilihannya berubah (bukan setiap slider Settings digeser).
-    /// Deteksi isi di belakang island (smart collapse) hanya valid jika island benar-benar tidak ikut terekam,
-    /// jadi ia menyala hanya saat island disembunyikan dan Windows menerima perintahnya.
+    /// Menerapkan pilihan "Hide island from screenshots" dan menyalakan/mematikan smart collapse.
+    /// Dua pengaturan ini INDEPENDEN:
+    /// - Hide island from screenshots hanya mengatur pengecualian dari tangkapan layar. Windows hanya dipanggil
+    ///   jika pilihannya berubah (bukan setiap slider Settings digeser).
+    /// - Smart collapse mengikuti "Auto-minimize when content is below". Saat island tidak disembunyikan dari
+    ///   tangkapan layar, WindowContextService mengecualikan island sesaat hanya selama mengambil gambar.
     /// </summary>
     private void ApplyCaptureVisibility()
     {
-        bool hide = _settingsService.Current.HideFromScreenshots;
-        if (_appliedHideFromCapture == hide)
+        AppSettings settings = _settingsService.Current;
+
+        _windowContext.CaptureExclusionSetter ??= exclude => WindowStyleHelper.SetCaptureExclusion(this, exclude);
+
+        bool hide = settings.HideFromScreenshots;
+        if (_appliedHideFromCapture != hide)
         {
-            return;
+            bool succeeded = WindowStyleHelper.SetCaptureExclusion(this, hide);
+            _appliedHideFromCapture = hide;
+            _windowContext.IsIslandExcludedFromCapture = hide && succeeded;
         }
 
-        bool succeeded = WindowStyleHelper.SetCaptureExclusion(this, hide);
-        _appliedHideFromCapture = hide;
-        _windowContext.IsContentDetectionAvailable = hide && succeeded;
+        _windowContext.IsContentDetectionEnabled = settings.AutoMinimizeWhenWindowBelow;
     }
 
     private void OnSettingsChanged(object? sender, EventArgs e)
     {
         Island.Opacity = _settingsService.Current.Opacity;
+        NotchShape.Opacity = _settingsService.Current.Opacity;
 
         ApplyCaptureVisibility();
+        ApplyTabBarVisibility();
+
+        // Bentuk atau skala berubah: terapkan, lalu hitung ulang zona smart collapse (ukuran pill normal ikut skala).
+        bool shapeOrScaleChanged = ApplyIslandScale();
 
         // Pindah monitor hanya jika pilihan monitor memang berubah (bukan setiap slider digeser).
-        if (_settingsService.Current.MonitorDeviceName != _appliedMonitorName)
+        if (shapeOrScaleChanged || _settingsService.Current.MonitorDeviceName != _appliedMonitorName)
         {
             PositionOnMonitor();
         }
@@ -975,7 +1120,7 @@ public partial class IslandWindow : Window
             ItemCount: _viewModel.TabItemCount,
             WideLayout: _viewModel.WantsWideLayout);
 
-        return TabLayout.GetSize(_viewModel.SelectedTab, settings.ExpandedWidth, request);
+        return TabLayout.GetSize(_viewModel.SelectedTab, TabLayout.BaseWidth, request);
     }
 
     /// <summary>
@@ -1120,8 +1265,14 @@ public partial class IslandWindow : Window
         // Perubahan ukuran saat ganti tab tanpa pantulan, supaya isi tab tidak keluar dari bingkai.
         IslandHost.BeginAnimation(FrameworkElement.WidthProperty, widthAnimation);
         IslandHost.BeginAnimation(FrameworkElement.HeightProperty,
-            new DoubleAnimation(size.Height + TopGap, duration) { EasingFunction = MotionTokens.ResizeEase });
+            new DoubleAnimation(size.Height + IslandProfile.TopGapFor(_settingsService.Current.IslandShape, IslandVisualMode.Expanded), duration)
+            {
+                EasingFunction = MotionTokens.ResizeEase
+            });
     }
+
+    // Apakah ApplyState terakhir menampilkan mode tersembunyi (dipakai agar "muncul kembali" memakai gerak membuka).
+    private bool _wasIdleHiddenApplied;
 
     private void ApplyState()
     {
@@ -1142,11 +1293,13 @@ public partial class IslandWindow : Window
 
         bool isNotification = !isExpanded && _viewModel.IsNotificationVisible;
         bool isRecording = !isExpanded && !isNotification && _viewModel.IsRecording;
-        bool isMini = !isExpanded && !isNotification && !isRecording && _viewModel.IsMini;
+        bool isIdleHidden = !isExpanded && !isNotification && !isRecording && _viewModel.IsIdleHidden;
+        bool isMini = !isExpanded && !isNotification && !isRecording && !isIdleHidden && _viewModel.IsMini;
 
         // Gaya gerak ala Apple: island yang membesar sedikit "memantul" di akhir (kurva membuka, durasi lebih panjang),
         // sedangkan saat mengecil geraknya halus tanpa pantulan (kurva menutup, durasi lebih pendek). Lihat MotionTokens.
-        bool isOpening = isExpanded || isNotification || isRecording;
+        // Muncul dari keadaan tersembunyi (pointer menyentuh garis tepi atas) juga memakai gerak membuka.
+        bool isOpening = isExpanded || isNotification || isRecording || (_wasIdleHiddenApplied && !isIdleHidden);
         // Mode gerak berkurang: ukuran dan bentuk berubah langsung (durasi nol), isi crossfade pendek (lihat SetContentVisible).
         TimeSpan duration = MotionTokens.ReducedMotion
             ? TimeSpan.Zero
@@ -1158,9 +1311,7 @@ public partial class IslandWindow : Window
 
         double visibleWidth;
         double visibleHeight;
-        double topRadius;
-        double bottomRadius;
-        double topGap;
+        IslandVisualMode visualMode;
 
         if (isExpanded)
         {
@@ -1168,33 +1319,33 @@ public partial class IslandWindow : Window
             TabSize tabSize = GetExpandedSize(settings);
             visibleWidth = tabSize.Width;
             visibleHeight = tabSize.Height;
-            topRadius = settings.ExpandedCornerRadius;
-            bottomRadius = settings.ExpandedCornerRadius;
-            topGap = TopGap;
+            visualMode = IslandVisualMode.Expanded;
         }
         else if (isNotification)
         {
             visibleWidth = NotificationWidth;
             visibleHeight = NotificationHeight;
-            topRadius = NotificationHeight / 2;
-            bottomRadius = NotificationHeight / 2;
-            topGap = TopGap;
+            visualMode = IslandVisualMode.Notification;
         }
         else if (isRecording)
         {
             visibleWidth = RecordingWidth;
             visibleHeight = RecordingHeight;
-            topRadius = RecordingHeight / 2;
-            bottomRadius = RecordingHeight / 2;
-            topGap = TopGap;
+            visualMode = IslandVisualMode.Recording;
+        }
+        else if (isIdleHidden)
+        {
+            // Hanya garis pemicu: island sendiri bertinggi nol, jadi tidak ada yang terlihat.
+            // Garis (tinggi = celah atas) tetap menerima pointer berkat latar hampir transparan di IslandHost.
+            visibleWidth = IslandProfile.HiddenStripWidth;
+            visibleHeight = 0;
+            visualMode = IslandVisualMode.Hidden;
         }
         else if (isMini)
         {
             visibleWidth = MiniWidth;
             visibleHeight = MiniHeight;
-            topRadius = 0;                  // sisi atas rata: menempel di tepi layar seperti notch
-            bottomRadius = MiniBottomRadius;
-            topGap = 0;                     // tanpa celah: menempel di tepi atas layar
+            visualMode = IslandVisualMode.Mini;
         }
         else
         {
@@ -1202,10 +1353,12 @@ public partial class IslandWindow : Window
             _lastPillTarget = visibleWidth;
             UpdatePillLyricWidth();
             visibleHeight = CollapsedHeight;
-            topRadius = CollapsedHeight / 2;
-            bottomRadius = CollapsedHeight / 2;
-            topGap = TopGap;
+            visualMode = IslandVisualMode.Normal;
         }
+
+        // Celah atas, radius sudut, dan telinga ditentukan IslandProfile menurut bentuk (Dynamic atau Notch) dan mode.
+        IslandShapeMetrics metrics = IslandProfile.Get(settings.IslandShape, visualMode, visibleHeight, settings.ExpandedCornerRadius);
+        double topGap = metrics.TopGap;
 
         // Semua animasi dimulai dari nilai saat ini, jadi tetap mulus walaupun pengguna
         // berpindah mode di tengah animasi.
@@ -1216,13 +1369,15 @@ public partial class IslandWindow : Window
         Island.BeginAnimation(FrameworkElement.MarginProperty,
             new ThicknessAnimation(new Thickness(0, topGap, 0, 0), duration) { EasingFunction = easing });
         BeginAnimation(IslandTopRadiusProperty,
-            new DoubleAnimation(topRadius, duration) { EasingFunction = easing });
+            new DoubleAnimation(metrics.TopRadius, duration) { EasingFunction = easing });
         BeginAnimation(IslandBottomRadiusProperty,
-            new DoubleAnimation(bottomRadius, duration) { EasingFunction = easing });   
+            new DoubleAnimation(metrics.BottomRadius, duration) { EasingFunction = easing });
+        BeginAnimation(IslandEarRadiusProperty,
+            new DoubleAnimation(metrics.EarRadius, duration) { EasingFunction = easing });
 
         // Isi: collapsed hanya pada mode normal, expanded hanya pada mode expanded,
         // notifikasi hanya pada mode notifikasi, perekaman hanya pada mode perekaman, dan mode mini tidak menampilkan apa-apa.
-        SetContentVisible(CollapsedContent, !isExpanded && !isNotification && !isRecording && !isMini, duration);
+        SetContentVisible(CollapsedContent, !isExpanded && !isNotification && !isRecording && !isMini && !isIdleHidden, duration);
         SetContentVisible(ExpandedContent, isExpanded, duration);
         SetContentVisible(NotificationContent, isNotification, duration);
         SetContentVisible(RecordingContent, isRecording, duration);
@@ -1245,6 +1400,7 @@ public partial class IslandWindow : Window
         }
 
         _wasExpandedApplied = isExpanded;
+        _wasIdleHiddenApplied = isIdleHidden;
     }
 
     /// <summary>Isi yang hilang memudar cepat, isi yang muncul menunggu island cukup besar.</summary>
@@ -1270,6 +1426,12 @@ public partial class IslandWindow : Window
     /// </summary>
     private void Island_PreviewDragOver(object sender, DragEventArgs e)
     {
+        // Tab Shelf dimatikan: seret file diabaikan (kursor menunjukkan tidak bisa dijatuhkan).
+        if (!_viewModel.IsShelfTabEnabled)
+        {
+            return;
+        }
+
         if (!e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             return;
@@ -1294,6 +1456,12 @@ public partial class IslandWindow : Window
 
     private void Island_PreviewDragLeave(object sender, DragEventArgs e)
     {
+        // Tab Shelf dimatikan: seret file diabaikan (kursor menunjukkan tidak bisa dijatuhkan).
+        if (!_viewModel.IsShelfTabEnabled)
+        {
+            return;
+        }
+
         if (!e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             return;
@@ -1310,6 +1478,12 @@ public partial class IslandWindow : Window
 
     private void Island_PreviewDrop(object sender, DragEventArgs e)
     {
+        // Tab Shelf dimatikan: seret file diabaikan (kursor menunjukkan tidak bisa dijatuhkan).
+        if (!_viewModel.IsShelfTabEnabled)
+        {
+            return;
+        }
+
         if (!e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             return;

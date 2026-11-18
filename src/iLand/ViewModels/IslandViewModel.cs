@@ -340,6 +340,8 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         _notificationService.NotificationRequested += OnNotificationRequested;
         _windowContext.Changed += OnContextChanged;
         _settingsService.SettingsChanged += OnSettingsChanged;
+
+        ApplyEnabledTabs(); // catat daftar tab yang menyala saat startup
     }
 
     // True selama window island tampil. Diisi IslandWindow (menyembunyikan lewat tray tidak terlihat oleh ViewModel).
@@ -459,6 +461,13 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private PillLayoutMode _pillLayout = PillLayoutMode.Idle;
 
+    /// <summary>
+    /// True saat island disembunyikan karena "When idle: Hide". Dihitung ulang oleh UpdateIdleHidden setiap salah satu
+    /// syaratnya berubah. IslandWindow mengubahnya menjadi garis pemicu tipis di tepi atas layar.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isIdleHidden;
+
     // Bagian-bagian pill yang tampil menurut PillLayout (diisi UpdatePill).
     [ObservableProperty]
     private bool _pillShowLeftText = true;
@@ -530,6 +539,24 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         PillShowCover = layout != PillLayoutMode.Idle;
         PillShowLyrics = layout == PillLayoutMode.MediaLyrics;
         PillShowVisualizer = layout != PillLayoutMode.Idle;
+
+        UpdateIdleHidden();
+    }
+
+    /// <summary>
+    /// Island disembunyikan hanya jika: pilihan "When idle: Hide" aktif untuk bentuk ini, pill sedang Idle (tanpa musik),
+    /// tidak ada timer, dan island tidak terbuka, tidak menampilkan notifikasi, tidak merekam, serta pointer tidak sedang di atasnya.
+    /// Salah satu syarat berubah (musik mulai, timer jalan, notifikasi masuk, pointer menyentuh garis tepi atas) = island muncul lagi.
+    /// </summary>
+    private void UpdateIdleHidden()
+    {
+        IsIdleHidden = _settingsService.Current.ActiveHideWhenIdle
+                       && PillLayout == PillLayoutMode.Idle
+                       && !IsTimerActive
+                       && !IsExpanded
+                       && !IsNotificationVisible
+                       && !IsRecording
+                       && !_isPointerInside;
     }
 
     private DispatcherTimer CreateMediaPillTimer()
@@ -577,6 +604,7 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     partial void OnIsRecordingChanged(bool value)
     {
         UpdateAudioMeter();
+        UpdateIdleHidden();
     }
 
     partial void OnIsMediaPlayingChanged(bool value)
@@ -705,24 +733,74 @@ public partial class IslandViewModel : ObservableObject, IDisposable
 
     // PreviousTab -> PreviousTabCommand, NextTab -> NextTabCommand (dibuat otomatis oleh [RelayCommand]).
     // Di tab pertama atau terakhir tidak terjadi apa-apa (tidak berputar).
+    // Hanya tab yang menyala di Settings ("Tabs on island") yang dilewati saat berpindah.
     [RelayCommand]
     private void PreviousTab()
     {
-        int index = Array.IndexOf(TabOrder, SelectedTab);
+        IslandTab[] tabs = GetEnabledTabs();
+        int index = Array.IndexOf(tabs, SelectedTab);
         if (index > 0)
         {
-            SelectedTab = TabOrder[index - 1];
+            SelectedTab = tabs[index - 1];
         }
     }
 
     [RelayCommand]
     private void NextTab()
     {
-        int index = Array.IndexOf(TabOrder, SelectedTab);
-        if (index < TabOrder.Length - 1)
+        IslandTab[] tabs = GetEnabledTabs();
+        int index = Array.IndexOf(tabs, SelectedTab);
+        if (index >= 0 && index < tabs.Length - 1)
         {
-            SelectedTab = TabOrder[index + 1];
+            SelectedTab = tabs[index + 1];
         }
+    }
+
+    // ---- Tab yang menyala (pengaturan "Tabs on island") ----
+
+    /// <summary>Tab yang tampil di island, berurutan seperti enum IslandTab. Home selalu ada.</summary>
+    private IslandTab[] GetEnabledTabs()
+    {
+        AppSettings settings = _settingsService.Current;
+        return TabOrder.Where(settings.IsTabEnabled).ToArray();
+    }
+
+    // Tanda tangan tab yang menyala saat ini, untuk mendeteksi perubahan (SettingsChanged dipanggil untuk semua pengaturan).
+    private string _enabledTabsKey = string.Empty;
+
+    public bool IsShelfTabEnabled => _settingsService.Current.IsTabEnabled(IslandTab.Shelf);
+
+    public bool IsTimerTabEnabled => _settingsService.Current.IsTabEnabled(IslandTab.Timer);
+
+    public bool IsCaptureTabEnabled => _settingsService.Current.IsTabEnabled(IslandTab.Capture);
+
+    /// <summary>Kartu aksi cepat di Home hanya tampil jika tab yang dituju menyala.</summary>
+    public bool HasQuickActions => IsTimerTabEnabled || IsCaptureTabEnabled;
+
+    /// <summary>
+    /// Dipanggil saat pengaturan berubah. Jika daftar tab berubah dan tab yang sedang dibuka dimatikan,
+    /// island kembali ke Home. Juga memperbarui kartu Home yang bergantung pada tab.
+    /// </summary>
+    private void ApplyEnabledTabs()
+    {
+        AppSettings settings = _settingsService.Current;
+        string key = string.Join(',', TabOrder.Where(settings.IsTabEnabled));
+        if (key == _enabledTabsKey)
+        {
+            return;
+        }
+
+        _enabledTabsKey = key;
+
+        if (!settings.IsTabEnabled(SelectedTab))
+        {
+            SelectedTab = IslandTab.Home;
+        }
+
+        OnPropertyChanged(nameof(IsShelfTabEnabled));
+        OnPropertyChanged(nameof(IsTimerTabEnabled));
+        OnPropertyChanged(nameof(IsCaptureTabEnabled));
+        OnPropertyChanged(nameof(HasQuickActions));
     }
 
     private void OnContextChanged(object? sender, EventArgs e)
@@ -732,6 +810,7 @@ public partial class IslandViewModel : ObservableObject, IDisposable
 
     private void OnSettingsChanged(object? sender, EventArgs e)
     {
+        ApplyEnabledTabs();
         UpdateModeFlags();
     }
 
@@ -751,6 +830,9 @@ public partial class IslandViewModel : ObservableObject, IDisposable
 
         // Mode berubah (mini, notifikasi, terbuka): periksa apakah visualizer masih terlihat.
         UpdateAudioMeter();
+
+        // Pengaturan "When idle" atau mode berubah: tentukan lagi apakah island disembunyikan.
+        UpdateIdleHidden();
     }
 
     // ---- Aturan interaksi mouse (dipanggil oleh View) ----
@@ -759,6 +841,7 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     public void OnPointerEntered()
     {
         _isPointerInside = true;
+        UpdateIdleHidden(); // pointer menyentuh garis tepi atas: island yang tersembunyi muncul
 
         // Saat notifikasi tampil, hover hanya menahan notifikasi agar tidak hilang. Island tidak melebar.
         if (IsNotificationVisible)
@@ -787,6 +870,7 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     public void OnPointerLeft()
     {
         _isPointerInside = false;
+        UpdateIdleHidden(); // pointer pergi dan island sedang diam: sembunyi lagi
 
         if (IsNotificationVisible)
         {
@@ -879,6 +963,12 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     /// </summary>
     public void OnFileDragOver()
     {
+        // Tab Shelf dimatikan: seret file ke island diabaikan.
+        if (!IsShelfTabEnabled)
+        {
+            return;
+        }
+
         _isPointerInside = true;
         _collapseTimer.Stop();
 
@@ -909,6 +999,11 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     /// <summary>File dijatuhkan ke island: simpan ke Shelf.</summary>
     public void OnFilesDropped(string[] paths)
     {
+        if (!IsShelfTabEnabled)
+        {
+            return;
+        }
+
         Shelf.AddDroppedPaths(paths);
         Shelf.IsDragOver = false;
 
@@ -1077,6 +1172,11 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void StartFocus()
     {
+        if (!IsTimerTabEnabled)
+        {
+            return; // tab Timer dimatikan (kartunya juga disembunyikan di Home)
+        }
+
         SelectedTab = IslandTab.Timer;
 
         if (_timerService.IsActive && _timerService.Mode != TimerMode.Pomodoro)

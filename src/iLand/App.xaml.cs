@@ -135,6 +135,7 @@ public partial class App : Application
         services.AddSingleton<ICaptureService, CaptureService>();
         services.AddSingleton<IRecordingService, RecordingService>();
         services.AddSingleton<IStartupService, StartupService>();
+        services.AddSingleton<IUpdateCheckService, UpdateCheckService>();
         services.AddSingleton<ITrayService, TrayService>();
         services.AddSingleton<IMonitorService, MonitorService>();
         services.AddSingleton<IWindowContextService, WindowContextService>();
@@ -151,6 +152,12 @@ public partial class App : Application
         services.AddSingleton<LyricsViewModel>();
         services.AddSingleton<MixerViewModel>();
         services.AddTransient<SettingsViewModel>();   // Transient: dibuat baru tiap Settings dibuka
+        // ViewModel tiap halaman Settings: dibuat oleh SettingsViewModel saat halamannya pertama dibuka.
+        services.AddTransient<IslandSettingsViewModel>();
+        services.AddTransient<MusicSettingsViewModel>();
+        services.AddTransient<CaptureSettingsViewModel>();
+        services.AddTransient<GeneralSettingsViewModel>();
+        services.AddTransient<AboutViewModel>();
 
         // Views
         services.AddSingleton<IslandWindow>();

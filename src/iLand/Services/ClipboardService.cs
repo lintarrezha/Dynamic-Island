@@ -75,7 +75,9 @@ public sealed class ClipboardService : IClipboardService, IDisposable
     /// <summary>Memasang atau melepas pemantau sesuai pengaturan. Aman dipanggil berulang kali.</summary>
     private void ApplyEnabledState()
     {
-        bool enabled = _settingsService.Current.ClipboardHistoryEnabled;
+        // Riwayat clipboard hidup di tab Shelf, jadi ikut mati saat tab Shelf dimatikan (isinya dikosongkan).
+        bool enabled = _settingsService.Current.ClipboardHistoryEnabled
+                       && _settingsService.Current.IsTabEnabled(IslandTab.Shelf);
 
         if (enabled && !_isListening)
         {
