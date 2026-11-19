@@ -88,6 +88,10 @@
                     <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
                                Text="Lyrics are off by default. When you turn them on, the title, artist, album and length of the song you are playing are sent to lrclib.net to find its lyrics." />
                     <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
+                               Text="The Control tab reads, only while it is open: whether Wi-Fi and Bluetooth are on, the name of your Wi-Fi network (shown on the card, never saved or sent), screen brightness, volume, the Windows theme, and the Battery saver status. It changes a setting only when you press a card or move a slider." />
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
+                               Text="Night light and Battery saver have no official switch in Windows, so iLand edits the values Windows itself uses: a Night light registry value, and the automatic Battery saver threshold. When iLand turns Battery saver on, it keeps your original threshold in settings.json and puts it back when you turn it off. The color picker looks at a still picture of the screen in memory only." />
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
                                Text="Check for updates sends one plain request to GitHub, which can see your IP address like any website. Nothing else is sent, and it never runs by itself." />
                 </StackPanel>
             </Border>

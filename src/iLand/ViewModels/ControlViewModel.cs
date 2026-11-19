@@ -26,6 +26,10 @@ public sealed partial class ControlViewModel : ObservableObject
     private readonly ICaptureService _capture;
     private readonly ILogger<ControlViewModel> _logger;
 
+    // SetActive dipanggil setiap kali IslandViewModel menghitung ulang status (misalnya saat media berganti).
+    // Hanya perubahan nyata yang diproses, supaya registri dan WMI tidak dibaca berulang saat tab tetap terbuka.
+    private bool _isActive;
+
     [ObservableProperty] private bool _isWifiAvailable;
     [ObservableProperty] private bool _isWifiOn;
     [ObservableProperty] private string _wifiSubtitle = "Off";
@@ -129,6 +133,13 @@ public sealed partial class ControlViewModel : ObservableObject
     /// <summary>Dipanggil IslandViewModel: true saat tab Control benar-benar terlihat.</summary>
     public void SetActive(bool active)
     {
+        if (active == _isActive)
+        {
+            return;
+        }
+
+        _isActive = active;
+
         if (active)
         {
             IsDarkMode = _theme.IsDarkMode; // dibaca ulang setiap tab dibuka
