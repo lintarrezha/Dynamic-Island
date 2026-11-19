@@ -11,6 +11,9 @@ public interface ICaptureService
     /// <summary>Layar dibekukan, lalu pengguna menyeret kotak untuk memilih area.</summary>
     void CaptureArea();
 
+    /// <summary>Layar dibekukan, lalu pengguna mengklik piksel mana saja. Warnanya (HEX) disalin ke clipboard.</summary>
+    void PickColor();
+
     /// <summary>Layar dibekukan, lalu pengguna mengklik sebuah jendela.</summary>
     void CaptureWindow();
 }

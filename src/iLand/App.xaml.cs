@@ -151,6 +151,12 @@ public partial class App : Application
         services.AddSingleton<CaptureViewModel>();
         services.AddSingleton<LyricsViewModel>();
         services.AddSingleton<MixerViewModel>();
+        services.AddSingleton<IRadioService, RadioService>();
+        services.AddSingleton<IThemeService, ThemeService>();
+        services.AddSingleton<IBrightnessService, BrightnessService>();
+        services.AddSingleton<INightLightService, NightLightService>();
+        services.AddSingleton<IBatterySaverService, BatterySaverService>();
+        services.AddSingleton<ControlViewModel>();
         services.AddTransient<SettingsViewModel>();   // Transient: dibuat baru tiap Settings dibuka
         // ViewModel tiap halaman Settings: dibuat oleh SettingsViewModel saat halamannya pertama dibuka.
         services.AddTransient<IslandSettingsViewModel>();

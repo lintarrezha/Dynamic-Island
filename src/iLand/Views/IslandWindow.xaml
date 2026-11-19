@@ -357,6 +357,9 @@
                                 <RadioButton GroupName="IslandNav" ToolTip="Home"
                                              Style="{StaticResource TabBarItemStyle}" Tag="{StaticResource IconHome}"
                                              IsChecked="{Binding SelectedTab, Mode=TwoWay, Converter={StaticResource EnumMatch}, ConverterParameter={x:Static models:IslandTab.Home}}" />
+                                <RadioButton GroupName="IslandNav" ToolTip="Control"
+                                             Style="{StaticResource TabBarItemStyle}" Tag="{StaticResource IconControl}"
+                                             IsChecked="{Binding SelectedTab, Mode=TwoWay, Converter={StaticResource EnumMatch}, ConverterParameter={x:Static models:IslandTab.Control}}" />
                                 <RadioButton GroupName="IslandNav" ToolTip="Music"
                                              Style="{StaticResource TabBarItemStyle}" Tag="{StaticResource IconMusic}"
                                              IsChecked="{Binding SelectedTab, Mode=TwoWay, Converter={StaticResource EnumMatch}, ConverterParameter={x:Static models:IslandTab.Music}}" />
@@ -410,7 +413,7 @@
 
                         <!-- Area tab: hanya satu panel yang terlihat. Visibility panel diatur oleh code-behind
                              (ChangeTab) supaya perpindahan tab bisa dianimasikan. Urutan panel harus sama dengan enum IslandTab:
-                             Home, Music, Mixer, Timer, Todo, Shelf, Capture. Margin konten: kiri-kanan 20, bawah 18. -->
+                             Home, Control, Music, Mixer, Timer, Todo, Shelf, Capture. Margin konten: kiri-kanan 20, bawah 18. -->
                         <Grid x:Name="TabHost" Grid.Row="1" Margin="20,10,20,18">
 
                             <!-- ===== Tab Home: sapaan, jam besar, tanggal, baterai (kiri) + dua kartu aksi cepat (kanan) ===== -->
@@ -491,6 +494,9 @@
                                     </Button>
                                 </StackPanel>
                             </Grid>
+
+                            <!-- ===== Tab Control: Wi-Fi, Bluetooth, mode gelap, mute, kunci, volume ===== -->
+                            <components:ControlView DataContext="{Binding ControlPanel}" />
 
                             <!-- ===== Tab Music (isinya ada di Views/Components/MusicTabView.xaml) ===== -->
                             <components:MusicTabView />

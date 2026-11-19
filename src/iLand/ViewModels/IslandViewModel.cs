@@ -103,6 +103,9 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     /// <summary>Tab Mixer: volume master dan per aplikasi.</summary>
     public MixerViewModel Mixer { get; }
 
+    /// <summary>Tab Control: Wi-Fi, Bluetooth, mode gelap, mute, kunci layar, volume.</summary>
+    public ControlViewModel ControlPanel { get; }
+
     /// <summary>Isi tab Shelf (file sementara). Dikelola oleh ShelfViewModel sendiri.</summary>
     public ShelfViewModel Shelf { get; }
 
@@ -291,7 +294,8 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         CaptureViewModel captureViewModel,
         IRecordingService recordingService,
         LyricsViewModel lyricsViewModel,
-        MixerViewModel mixerViewModel)
+        MixerViewModel mixerViewModel,
+        ControlViewModel controlViewModel)
     {
         _clockService = clockService;
         _batteryService = batteryService;
@@ -312,6 +316,7 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         _recordingService = recordingService;
         Lyrics = lyricsViewModel;
         Mixer = mixerViewModel;
+        ControlPanel = controlViewModel;
         // Jumlah aplikasi yang bersuara memengaruhi tinggi island saat tab Mixer terbuka.
         Mixer.Apps.CollectionChanged += OnMixerAppsChanged;
         // Baris lirik yang berganti dan status panel lirik menentukan isi pill.
@@ -597,8 +602,12 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         }
 
         // Mixer: sesi audio dan event hanya dipegang selama tab Mixer benar-benar terlihat.
+        // Tab Control juga memakai volume master dari IMixerService, jadi Mixer dipasang saat salah satu tab itu terlihat.
         bool mixerTabVisible = IsExpanded && SelectedTab == IslandTab.Mixer;
-        Mixer.SetActive(_isWindowVisible && !ShouldHideForFullscreen && mixerTabVisible);
+        bool controlTabVisible = IsExpanded && SelectedTab == IslandTab.Control;
+        bool islandShown = _isWindowVisible && !ShouldHideForFullscreen;
+        Mixer.SetActive(islandShown && (mixerTabVisible || controlTabVisible));
+        ControlPanel.SetActive(islandShown && controlTabVisible);
     }
 
     partial void OnIsRecordingChanged(bool value)
@@ -650,6 +659,7 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         IslandTab.Home => "Home",
         IslandTab.Music => "Music",
         IslandTab.Mixer => "Mixer",
+        IslandTab.Control => "Control",
         IslandTab.Timer => "Timer",
         IslandTab.Todo => "Tasks",
         IslandTab.Shelf => "Shelf",
@@ -728,7 +738,7 @@ public partial class IslandViewModel : ObservableObject, IDisposable
 
     // ---- Pindah tab lewat scroll mouse di tab bar ----
 
-    // Urutan tab mengikuti urutan nilai di enum IslandTab (Home, Music, Mixer, Timer, Todo, Shelf, Capture).
+    // Urutan tab mengikuti urutan nilai di enum IslandTab (Home, Control, Music, Mixer, Timer, Todo, Shelf, Capture).
     private static readonly IslandTab[] TabOrder = Enum.GetValues<IslandTab>();
 
     // PreviousTab -> PreviousTabCommand, NextTab -> NextTabCommand (dibuat otomatis oleh [RelayCommand]).
@@ -1612,6 +1622,7 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         Todo.Items.CollectionChanged -= OnTodoItemsChanged;
         Mixer.Apps.CollectionChanged -= OnMixerAppsChanged;
         Mixer.SetActive(false);
+        ControlPanel.SetActive(false);
         Lyrics.PropertyChanged -= OnLyricsPropertyChanged;
     }
 }

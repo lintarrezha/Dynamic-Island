@@ -70,6 +70,8 @@
                                     Description="Choose which tabs appear on the island. Home is always on. Blue means shown."
                                     IsStacked="True">
                         <StackPanel Orientation="Horizontal">
+                            <CheckBox Style="{DynamicResource SettingsTabToggleStyle}" Tag="IconControl" ToolTip="Control"
+                                      AutomationProperties.Name="Control tab" IsChecked="{Binding ControlTabEnabled}" />
                             <CheckBox Style="{DynamicResource SettingsTabToggleStyle}" Tag="IconMusic" ToolTip="Music"
                                       AutomationProperties.Name="Music tab" IsChecked="{Binding MusicTabEnabled}" />
                             <CheckBox Style="{DynamicResource SettingsTabToggleStyle}" Tag="IconMixer" ToolTip="Mixer"

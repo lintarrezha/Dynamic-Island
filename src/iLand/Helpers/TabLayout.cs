@@ -37,6 +37,9 @@ public static class TabLayout
     /// </summary>
     public const double CaptureHeight = 212;
 
+    /// <summary>Tab Control: isi 72 + 8 + 56 = 136, ditambah header. Disesuaikan dengan ControlView.xaml.</summary>
+    public const double ControlHeight = 136 + HeaderAndPadding;
+
     // Tab dengan tinggi dinamis: tingginya antara nilai minimum dan maksimum.
     public const double TodoMinHeight = 212;
     public const double TodoMaxHeight = 290;
@@ -89,6 +92,7 @@ public static class TabLayout
             IslandTab.Todo => GetTodoHeight(request.ItemCount),
             IslandTab.Shelf => ShelfHeight,
             IslandTab.Capture => CaptureHeight,
+            IslandTab.Control => ControlHeight,
             _ => HomeHeight
         };
 

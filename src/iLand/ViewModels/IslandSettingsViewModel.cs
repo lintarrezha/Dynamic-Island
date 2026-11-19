@@ -45,6 +45,7 @@ public sealed partial class IslandSettingsViewModel : SettingsPageViewModel
     [ObservableProperty] private bool _clipboardHistoryEnabled;
 
     // ---- Tabs on island (Home selalu aktif, jadi tidak ada di daftar) ----
+    [ObservableProperty] private bool _controlTabEnabled = true;
     [ObservableProperty] private bool _musicTabEnabled = true;
     [ObservableProperty] private bool _mixerTabEnabled = true;
     [ObservableProperty] private bool _timerTabEnabled = true;
@@ -85,6 +86,7 @@ public sealed partial class IslandSettingsViewModel : SettingsPageViewModel
             AutoMinimizeWhenWindowBelow = current.AutoMinimizeWhenWindowBelow;
             HideWhenFullscreen = current.HideWhenFullscreen;
             ClipboardHistoryEnabled = current.ClipboardHistoryEnabled;
+            ControlTabEnabled = current.IsTabEnabled(IslandTab.Control);
             MusicTabEnabled = current.IsTabEnabled(IslandTab.Music);
             MixerTabEnabled = current.IsTabEnabled(IslandTab.Mixer);
             TimerTabEnabled = current.IsTabEnabled(IslandTab.Timer);
@@ -164,6 +166,7 @@ public sealed partial class IslandSettingsViewModel : SettingsPageViewModel
     partial void OnAutoMinimizeWhenWindowBelowChanged(bool value) => Update(s => s.AutoMinimizeWhenWindowBelow = value);
     partial void OnHideWhenFullscreenChanged(bool value) => Update(s => s.HideWhenFullscreen = value);
     partial void OnClipboardHistoryEnabledChanged(bool value) => Update(s => s.ClipboardHistoryEnabled = value);
+    partial void OnControlTabEnabledChanged(bool value) => Update(s => s.SetTabEnabled(IslandTab.Control, value));
     partial void OnMusicTabEnabledChanged(bool value) => Update(s => s.SetTabEnabled(IslandTab.Music, value));
     partial void OnMixerTabEnabledChanged(bool value) => Update(s => s.SetTabEnabled(IslandTab.Mixer, value));
     partial void OnTimerTabEnabledChanged(bool value) => Update(s => s.SetTabEnabled(IslandTab.Timer, value));

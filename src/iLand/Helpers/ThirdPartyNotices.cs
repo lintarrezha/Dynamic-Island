@@ -37,6 +37,10 @@ public static class ThirdPartyNotices
 
         // Belum diverifikasi satu per satu: sengaja tidak menyebut lisensi.
         new ThirdPartyNotice("Serilog.Sinks.File", "7.0.0", string.Empty, false),
+        // Diverifikasi: halaman paket System.Management di nuget.org menyebut lisensi MIT.
+        new ThirdPartyNotice("System.Management", "10.0.11", "MIT", true),
+
+        new ThirdPartyNotice("System.CodeDom", "10.0.x", string.Empty, false),
         new ThirdPartyNotice("System.Numerics.Tensors", "9.0.0", string.Empty, false)
     };
 }

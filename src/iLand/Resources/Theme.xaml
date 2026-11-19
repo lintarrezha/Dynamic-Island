@@ -43,6 +43,35 @@
     <SolidColorBrush x:Key="WarningBrush" Color="#FFD60A" />   <!-- kuning -->
     <SolidColorBrush x:Key="DangerBrush" Color="#FF453A" />    <!-- merah -->
 
+    <LinearGradientBrush x:Key="ControlGlassBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#3AFFFFFF" Offset="0" />
+        <GradientStop Color="#22FFFFFF" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="ControlGlassBorderBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#4DFFFFFF" Offset="0" />
+        <GradientStop Color="#14FFFFFF" Offset="1" />
+    </LinearGradientBrush>
+
+    <!--
+        ===== Tab Control: gaya kartu seperti Control Center iPhone (referensi desain pengguna) =====
+        Kartu tidak aktif memakai bahan kaca yang SAMA dengan pill tab bar (TabBarGlassBrush dan TabBarGlassBorderBrush).
+        Kartu aktif = putih dengan ikon berwarna (warna per fungsi di bawah). Hanya dipakai di tab Control
+        (ControlTile dan ControlSliderCard). Ubah angka di sini untuk menyetel tampilannya.
+    -->
+    <LinearGradientBrush x:Key="ControlActiveFillBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FFFFFF" Offset="0" />
+        <GradientStop Color="#E6EBF2" Offset="1" />
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="ControlActiveBorderBrush" Color="#66FFFFFF" />
+    <SolidColorBrush x:Key="ControlActiveTitleBrush" Color="#1C1C1E" />       <!-- judul di atas kartu putih -->
+    <SolidColorBrush x:Key="ControlActiveSubtitleBrush" Color="#8C1C1C1E" />  <!-- keterangan di atas kartu putih (sekitar 55%) -->
+    <SolidColorBrush x:Key="ControlOrangeBrush" Color="#FF9F0A" />            <!-- ikon Night light -->
+    <SolidColorBrush x:Key="ControlIndigoBrush" Color="#5E5CE6" />            <!-- ikon Dark mode -->
+    <LinearGradientBrush x:Key="ControlSliderFillBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FFFFFF" Offset="0" />
+        <GradientStop Color="#E6EBF2" Offset="1" />
+    </LinearGradientBrush>
+
     <!--
         ===== Radius =====
         Aturan konsentris: radius dalam = radius luar dikurangi jarak ke tepi luar.
@@ -52,6 +81,7 @@
     <CornerRadius x:Key="CardRadius">16</CornerRadius>
     <CornerRadius x:Key="CompactCardRadius">14</CornerRadius>
     <CornerRadius x:Key="ControlRadius">12</CornerRadius>
+    <CornerRadius x:Key="ControlTileRadius">18</CornerRadius>
 
     <!-- ===== Empat gaya teks island ===== -->
     <!-- Display: jam besar. Angka tabular agar lebar digit sama dan jam tidak bergoyang. -->

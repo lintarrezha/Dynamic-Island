@@ -1,6 +1,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using iLand.Helpers;
@@ -67,6 +68,86 @@ public sealed class CaptureService : ICaptureService
     public void CaptureWindow()
     {
         RunCapture(() => SelectRegion(CaptureSelectionMode.Window));
+    }
+
+    /// <summary>
+    /// Pemilih warna: layar dibekukan, pengguna mengklik satu piksel, warnanya (HEX) disalin ke clipboard.
+    /// Memakai penjaga dan peristiwa yang sama dengan screenshot (CaptureStarted menutup island). Gambar beku hanya di memori.
+    /// </summary>
+    public void PickColor()
+    {
+        if (_isCapturing)
+        {
+            return;
+        }
+
+        _isCapturing = true;
+        try
+        {
+            CaptureStarted?.Invoke(this, EventArgs.Empty);
+
+            MonitorInfo monitor = GetMonitorUnderCursor();
+            BitmapSource? frozen = ScreenGrabber.Grab(monitor.Bounds);
+            if (frozen is null)
+            {
+                _notificationService.Show("Color picker failed", "Could not read the screen.", NotificationKind.Warning);
+                return;
+            }
+
+            var overlay = new ColorPickerOverlayWindow(frozen, monitor.Bounds);
+            overlay.ShowDialog();
+
+            if (overlay.PickedColor is not Color color)
+            {
+                return; // dibatalkan
+            }
+
+            string hex = ColorPickerOverlayWindow.ToHex(color);
+            bool copied = false;
+            try
+            {
+                Clipboard.SetText(hex);
+                copied = true;
+            }
+            catch (ExternalException ex)
+            {
+                // Clipboard sedang dipakai aplikasi lain.
+                _logger.LogDebug(ex, "Could not copy the picked color to the clipboard");
+            }
+
+            _notificationService.Show(
+                copied ? "Color copied" : "Color picked",
+                copied ? hex : $"{hex}  (could not copy)",
+                copied ? NotificationKind.Success : NotificationKind.Warning,
+                CreateSwatch(color));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Color picker failed");
+            _notificationService.Show("Color picker failed", "Something went wrong. See the log for details.", NotificationKind.Warning);
+        }
+        finally
+        {
+            _isCapturing = false;
+        }
+    }
+
+    // Kotak berwarna polos untuk pratinjau di notifikasi (hanya di memori).
+    private static BitmapSource CreateSwatch(Color color)
+    {
+        const int size = 8;
+        byte[] pixels = new byte[size * size * 4];
+        for (int i = 0; i < pixels.Length; i += 4)
+        {
+            pixels[i] = color.B;
+            pixels[i + 1] = color.G;
+            pixels[i + 2] = color.R;
+            pixels[i + 3] = 255;
+        }
+
+        BitmapSource swatch = BitmapSource.Create(size, size, 96, 96, PixelFormats.Bgr32, null, pixels, size * 4);
+        swatch.Freeze();
+        return swatch;
     }
 
     // ---- Alur umum ----

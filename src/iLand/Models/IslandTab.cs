@@ -8,6 +8,7 @@ namespace iLand.Models;
 public enum IslandTab
 {
     Home,
+    Control,
     Music,
     Mixer,
     Timer,

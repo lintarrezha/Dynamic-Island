@@ -126,6 +126,13 @@ public class AppSettings
     /// </summary>
     public bool ShowVolumeBrightnessOverlay { get; set; } = true;
 
+    /// <summary>
+    /// Ambang otomatis Battery saver milik pengguna (persen), disimpan HANYA saat iLand menaikkannya ke 100 untuk
+    /// menyalakan Battery saver dari tab Control. Null = iLand tidak mengubah apa pun. Dipakai untuk mengembalikan nilai aslinya
+    /// (juga setelah iLand tertutup mendadak).
+    /// </summary>
+    public int? BatterySaverOriginalThreshold { get; set; }
+
     /// <summary>True jika tab ini tampil di island. Home selalu tampil.</summary>
     public bool IsTabEnabled(IslandTab tab)
     {
@@ -179,6 +186,11 @@ public class AppSettings
             .Select(tab => tab!.Value.ToString())
             .Distinct()
             .ToList();
+
+        if (BatterySaverOriginalThreshold is < 0 or > 100)
+        {
+            BatterySaverOriginalThreshold = null;
+        }
 
         DynamicScale = SanitizeScale(DynamicScale);
         NotchScale = SanitizeScale(NotchScale);

@@ -1,0 +1,113 @@
+<UserControl x:Class="iLand.Views.Components.ControlView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:components="clr-namespace:iLand.Views.Components"
+             xmlns:conv="clr-namespace:iLand.Converters">
+
+    <UserControl.Resources>
+        <conv:OnOffTextConverter x:Key="OnOffText" />
+    </UserControl.Resources>
+
+    <!--
+        Tab Control, meniru Control Center iPhone. Isi 136 px tinggi (210 total dikurangi 74 header), lebar 500 px.
+
+        Kolom utama (jumlah lebar = 500):
+          kiri   : 376 px (sisa ruang)  -> baris atas: Wi-Fi dan Bluetooth (kartu lebar, tinggi 72)
+                                           baris bawah: 6 tombol persegi 56 x 56 (hanya ikon, nama ada di tooltip)
+          jarak  : 8 px
+          kanan  : 116 px               -> dua slider vertikal 54 px (volume dan kecerahan), setinggi dua baris kiri
+
+        Hitungan lebar: 6 tombol x 56 + 5 jarak x 8 = 376 (kiri), 2 slider x 54 + 8 = 116 (kanan), 376 + 8 + 116 = 500.
+        Hitungan tinggi: 72 + 8 + 56 = 136 (harus sama dengan TabLayout.ControlHeight dikurangi 74).
+        Gaya kartu: lihat ControlTile.xaml dan ControlSliderCard.xaml. DataContext = ControlViewModel.
+    -->
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="8" />
+            <ColumnDefinition Width="116" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ===== Kolom kiri ===== -->
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="72" />
+                <RowDefinition Height="8" />
+                <RowDefinition Height="56" />
+            </Grid.RowDefinitions>
+
+            <!-- Baris atas: Wi-Fi dan Bluetooth -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <components:ControlTile Grid.Column="0" Variant="Wide" ActiveBrush="{StaticResource AccentBrush}" Icon="{StaticResource IconWifi}" Title="Wi-Fi"
+                                        Subtitle="{Binding WifiSubtitle}" IsActive="{Binding IsWifiOn}"
+                                        IsEnabled="{Binding IsWifiAvailable}" Command="{Binding ToggleWifiCommand}" />
+                <components:ControlTile Grid.Column="2" Variant="Wide" ActiveBrush="{StaticResource AccentBrush}" Icon="{StaticResource IconBluetooth}" Title="Bluetooth"
+                                        Subtitle="{Binding BluetoothSubtitle}" IsActive="{Binding IsBluetoothOn}"
+                                        IsEnabled="{Binding IsBluetoothAvailable}" Command="{Binding ToggleBluetoothCommand}" />
+            </Grid>
+
+            <!-- Baris bawah: 6 tombol persegi, masing-masing 56 x 56, jarak 8 (Margin kanan 8, kecuali yang terakhir) -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                <components:ControlTile Variant="IconOnly" Width="56" Height="56" Margin="0,0,8,0"
+                                        ActiveBrush="{StaticResource ControlIndigoBrush}" Icon="{StaticResource IconMoon}" Title="Dark mode"
+                                        IsActive="{Binding IsDarkMode}" Command="{Binding ToggleDarkModeCommand}" />
+
+                <components:ControlTile Variant="IconOnly" Width="56" Height="56" Margin="0,0,8,0"
+                                        ActiveBrush="{StaticResource DangerBrush}" Title="Mute" IsActive="{Binding IsMuted}"
+                                        IsEnabled="{Binding IsAudioAvailable}" Command="{Binding ToggleMuteCommand}">
+                    <components:ControlTile.Style>
+                        <Style TargetType="components:ControlTile">
+                            <Setter Property="Icon" Value="{StaticResource IconVolumeOn}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                    <Setter Property="Icon" Value="{StaticResource IconVolumeOff}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </components:ControlTile.Style>
+                </components:ControlTile>
+
+                <components:ControlTile Variant="IconOnly" Width="56" Height="56" Margin="0,0,8,0"
+                                        ActiveBrush="{StaticResource ControlOrangeBrush}" Icon="{StaticResource IconNightLight}" Title="Night light"
+                                        IsActive="{Binding IsNightLightOn}" Command="{Binding ToggleNightLightCommand}" />
+
+                <components:ControlTile Variant="IconOnly" Width="56" Height="56" Margin="0,0,8,0"
+                                        ActiveBrush="{StaticResource SuccessBrush}" Icon="{StaticResource IconBatterySaver}" Title="Battery saver"
+                                        IsActive="{Binding IsBatterySaverOn}" IsEnabled="{Binding IsBatterySaverAvailable}"
+                                        Command="{Binding ToggleBatterySaverCommand}" />
+
+                <components:ControlTile Variant="IconOnly" Width="56" Height="56" Margin="0,0,8,0"
+                                        Icon="{StaticResource IconEyedropper}" Title="Color picker"
+                                        Command="{Binding PickColorCommand}" />
+
+                <components:ControlTile Variant="IconOnly" Width="56" Height="56"
+                                        Icon="{StaticResource IconLock}" Title="Lock"
+                                        Command="{Binding LockScreenCommand}" />
+            </StackPanel>
+        </Grid>
+
+        <!-- ===== Kolom kanan: dua slider vertikal, tingginya mengikuti kolom kiri (136 px) ===== -->
+        <Grid Grid.Column="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="54" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="54" />
+            </Grid.ColumnDefinitions>
+
+            <components:ControlSliderCard Grid.Column="0" IconBrush="{StaticResource AccentBrush}" Icon="{StaticResource IconVolumeOn}"
+                                          Value="{Binding Volume, Mode=TwoWay}" Text="{Binding VolumeText}"
+                                          IsEnabled="{Binding IsAudioAvailable}"
+                                          AutomationProperties.Name="Volume" ToolTip="Volume" />
+            <components:ControlSliderCard Grid.Column="2" IconBrush="{StaticResource WarningBrush}" Icon="{StaticResource IconSun}"
+                                          Value="{Binding Brightness, Mode=TwoWay}" Text="{Binding BrightnessText}"
+                                          IsEnabled="{Binding IsBrightnessAvailable}"
+                                          AutomationProperties.Name="Brightness" ToolTip="Brightness" />
+        </Grid>
+    </Grid>
+</UserControl>
