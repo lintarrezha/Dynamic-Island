@@ -16,6 +16,12 @@ public interface IMediaService
     /// <summary>Play jika sedang pause, pause jika sedang play.</summary>
     Task TogglePlayPauseAsync();
 
+    /// <summary>Menjeda pemutaran (SMTC TryPauseAsync). False bila tidak ada sesi atau pemutar menolak.</summary>
+    Task<bool> PauseAsync();
+
+    /// <summary>Melanjutkan pemutaran (SMTC TryPlayAsync). False bila tidak ada sesi atau pemutar menolak.</summary>
+    Task<bool> PlayAsync();
+
     Task NextTrackAsync();
 
     Task PreviousTrackAsync();

@@ -70,8 +70,24 @@ public partial class App : Application
         _serviceProvider.GetRequiredService<IHotkeyService>().Initialize();
         // Riwayat clipboard: pemantau baru dipasang jika pengguna menyalakannya di Settings (bawaannya mati).
         _serviceProvider.GetRequiredService<IClipboardService>().Initialize();
+        // Overlay volume dan kecerahan: pendengar baru dipasang jika diizinkan di Settings.
+        _serviceProvider.GetRequiredService<ILevelOverlayService>().Initialize();
+        // Panel charging: pendengar baterai baru dipasang jika diizinkan di Settings (bawaan aktif).
+        _serviceProvider.GetRequiredService<IChargingOverlayService>().Initialize();
+        // Chip "perangkat Bluetooth tersambung": pengamat baru dipasang jika diizinkan di Settings (bawaan aktif).
+        _serviceProvider.GetRequiredService<IBluetoothDeviceService>().Initialize();
+        // Indikator Caps Lock: opt-in, mati bawaan. Timer pemeriksa hanya berjalan jika dinyalakan di Settings.
+        _serviceProvider.GetRequiredService<ICapsLockService>().Initialize();
+        // Mode rapat: opt-in, mati bawaan. Pemantau mikrofon hanya berjalan jika dinyalakan di Settings.
+        _serviceProvider.GetRequiredService<IMeetingService>().Initialize();
         // Mulai membaca sesi media (Spotify, browser, dll). Berjalan di latar dan tidak memblokir tampilan.
         _ = _serviceProvider.GetRequiredService<IMediaService>().InitializeAsync();
+#if DEBUG
+        // Hanya Debug: urutan uji overlay bila ILAND_OVERLAY_TEST=1 (lihat Helpers/OverlayDebugSequence.cs).
+        OverlayDebugSequence.RunIfRequested(_serviceProvider);
+        // Hanya Debug: uji hidup-mati fitur Prompt 7 bila ILAND_LIFECYCLE_TEST=1 (lihat Helpers/LifecycleDebugTest.cs).
+        LifecycleDebugTest.RunIfRequested(_serviceProvider);
+#endif
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -125,6 +141,10 @@ public partial class App : Application
         services.AddSingleton<IBatteryService, BatteryService>();
         services.AddSingleton<IMediaService, MediaService>();
         services.AddSingleton<ILyricsService, LyricsService>();
+        services.AddSingleton<IOverlayService, OverlayService>();
+        services.AddSingleton<IScrollVolumeService, ScrollVolumeService>();
+        services.AddSingleton<IMicUsageMonitor, MicUsageMonitor>();
+        services.AddSingleton<IMeetingService, MeetingService>();
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<ITimerService, TimerService>();
         services.AddSingleton<IFocusStatsService, FocusStatsService>();
@@ -154,6 +174,11 @@ public partial class App : Application
         services.AddSingleton<IRadioService, RadioService>();
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IBrightnessService, BrightnessService>();
+        services.AddSingleton<IMasterVolumeWatcher, MasterVolumeWatcher>();
+        services.AddSingleton<ILevelOverlayService, LevelOverlayService>();
+        services.AddSingleton<IChargingOverlayService, ChargingOverlayService>();
+        services.AddSingleton<IBluetoothDeviceService, BluetoothDeviceService>();
+        services.AddSingleton<ICapsLockService, CapsLockService>();
         services.AddSingleton<INightLightService, NightLightService>();
         services.AddSingleton<IBatterySaverService, BatterySaverService>();
         services.AddSingleton<ControlViewModel>();
@@ -161,6 +186,7 @@ public partial class App : Application
         // ViewModel tiap halaman Settings: dibuat oleh SettingsViewModel saat halamannya pertama dibuka.
         services.AddTransient<IslandSettingsViewModel>();
         services.AddTransient<MusicSettingsViewModel>();
+        services.AddTransient<MeetingAlertsViewModel>();
         services.AddTransient<CaptureSettingsViewModel>();
         services.AddTransient<GeneralSettingsViewModel>();
         services.AddTransient<AboutViewModel>();

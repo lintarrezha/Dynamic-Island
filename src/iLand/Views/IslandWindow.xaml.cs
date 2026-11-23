@@ -46,6 +46,19 @@ public partial class IslandWindow : Window
     private const double NotificationWidth = 330;
     private const double NotificationHeight = 58;
 
+    // Overlay sementara lain (memakai mode notifikasi, ukuran menurut jenisnya).
+    // Level (volume, kecerahan): ikon 20, bar, angka. Chip (perangkat, Caps Lock): ikon 20 dan satu baris teks, lebar mengikuti teks.
+    private const double OverlayLevelWidth = 260;
+    private const double OverlayLevelHeight = 44;
+    private const double OverlayChipHeight = 44;
+    private const double OverlayChipMinWidth = 150;
+    private const double OverlayChipMaxWidth = 320;
+    // Bagian chip di luar teks: margin 16 x 2, ikon 20, jarak 10, cadangan 4.
+    private const double OverlayChipChrome = 66;
+    // Panel charging: cincin 64, persen, keterangan.
+    private const double OverlayChargingWidth = 168;
+    private const double OverlayChargingHeight = 150;
+
     // Mode perekaman: pill sedang berisi titik merah, timer, dan tombol stop.
     private const double RecordingWidth = 250;
     private const double RecordingHeight = 44;
@@ -483,6 +496,7 @@ public partial class IslandWindow : Window
             case nameof(IslandViewModel.IsNotificationVisible):
             case nameof(IslandViewModel.IsRecording):
             case nameof(IslandViewModel.IsIdleHidden):
+            case nameof(IslandViewModel.OverlayRevision): // jenis atau teks overlay berganti saat sudah tampil: ukuran dihitung ulang
                 ApplyState();
                 break;
 
@@ -520,6 +534,7 @@ public partial class IslandWindow : Window
                 ApplyPillWidth();
                 break;
 
+            case nameof(IslandViewModel.ShowGlassMusicLayout): // gaya Glass dipilih atau dilepas: tinggi tab Music berubah
             case nameof(IslandViewModel.WantsWideLayout):
                 // Panel lirik dibuka atau ditutup: lebar island ikut berubah.
                 if (_viewModel.IsExpanded)
@@ -764,6 +779,7 @@ public partial class IslandWindow : Window
         panel.BeginAnimation(UIElement.OpacityProperty, null); // lepas animasi dulu, baru atur nilai
         panel.Opacity = 1;
         panel.IsHitTestVisible = true;
+        panel.ClearValue(UIElement.CacheModeProperty); // cache hanya selama crossfade
     }
 
     /// <summary>
@@ -830,7 +846,22 @@ public partial class IslandWindow : Window
             panel.Visibility = Visibility.Collapsed;
         };
 
+        CacheForCrossfade(panel);
         panel.BeginAnimation(UIElement.OpacityProperty, fade);
+    }
+
+    /// <summary>
+    /// Selama panel memudar, ia digambar sekali ke tekstur (BitmapCache pada skala DPI layar, jadi teks tetap tajam).
+    /// Dilepas oleh ResetPanel saat animasi selesai. Mati bila MotionTokens.TabCrossfadeBitmapCache false atau gerak berkurang.
+    /// </summary>
+    private void CacheForCrossfade(UIElement panel)
+    {
+        if (!MotionTokens.TabCrossfadeBitmapCache || MotionTokens.ReducedMotion)
+        {
+            return;
+        }
+
+        panel.CacheMode = new BitmapCache(VisualTreeHelper.GetDpi(this).DpiScaleX);
     }
 
     private void FadeInPanel(int index)
@@ -866,6 +897,7 @@ public partial class IslandWindow : Window
         }
 
         panel.IsHitTestVisible = true;
+        CacheForCrossfade(panel);
 
         var fade = new DoubleAnimation(1, reduced ? MotionTokens.ReducedFade : Scaled(MotionTokens.ContentInMs))
         {
@@ -1118,7 +1150,8 @@ public partial class IslandWindow : Window
     {
         var request = new TabLayoutRequest(
             ItemCount: _viewModel.TabItemCount,
-            WideLayout: _viewModel.WantsWideLayout);
+            WideLayout: _viewModel.WantsWideLayout,
+            GlassMusic: _viewModel.ShowGlassMusicLayout);
 
         return TabLayout.GetSize(_viewModel.SelectedTab, TabLayout.BaseWidth, request);
     }
@@ -1188,6 +1221,7 @@ public partial class IslandWindow : Window
         TimeSpan stopAfter = animationDuration + TimeSpan.FromMilliseconds(150);
         int frames = 0;
         double worst = 0;
+        double worstAt = 0;
         int slowFrames = 0;
         double total = 0;
 
@@ -1199,7 +1233,12 @@ public partial class IslandWindow : Window
             {
                 double gap = (now - last).TotalMilliseconds;
                 total += gap;
-                worst = Math.Max(worst, gap);
+                if (gap > worst)
+                {
+                    worst = gap;
+                    worstAt = now.TotalMilliseconds;
+                }
+
                 if (gap > 25)
                 {
                     slowFrames++;
@@ -1215,8 +1254,8 @@ public partial class IslandWindow : Window
                 _frameProbeRunning = false;
                 double average = frames > 1 ? total / (frames - 1) : 0;
                 Serilog.Log.Debug(
-                    "Anim probe [{Label}] durasi={Duration:0}ms frame={Frames} rata-rata={Avg:0.0}ms terburuk={Worst:0.0}ms lambat(>25ms)={Slow}",
-                    label, animationDuration.TotalMilliseconds, frames, average, worst, slowFrames);
+                    "Anim probe [{Label}] durasi={Duration:0}ms frame={Frames} rata-rata={Avg:0.0}ms terburuk={Worst:0.0}ms pada={WorstAt:0}ms lambat(>25ms)={Slow}",
+                    label, animationDuration.TotalMilliseconds, frames, average, worst, worstAt, slowFrames);
             }
         };
 
@@ -1234,7 +1273,7 @@ public partial class IslandWindow : Window
         TimeSpan duration = MotionTokens.ReducedMotion ? TimeSpan.Zero : Scaled(MotionTokens.ResizeMs);
         TabSize size = GetExpandedSize(_settingsService.Current);
 #if DEBUG
-        StartFrameProbe("ganti tab / ukuran", duration);
+        StartFrameProbe("ganti tab -> " + _viewModel.SelectedTab, duration);
 #endif
 
         // Jika LEBAR berubah (panel lirik dibuka atau ditutup), isi dibiarkan meregang selama animasi lalu dikunci
@@ -1269,6 +1308,46 @@ public partial class IslandWindow : Window
             {
                 EasingFunction = MotionTokens.ResizeEase
             });
+    }
+
+    /// <summary>Ukuran overlay menurut jenisnya. Chip selebar teksnya (dibatasi), jenis lain tetap.</summary>
+    private (double Width, double Height) GetOverlaySize(OverlayKind kind)
+    {
+        switch (kind)
+        {
+            case OverlayKind.Level:
+                return (OverlayLevelWidth, OverlayLevelHeight);
+
+            case OverlayKind.Charging:
+                return (OverlayChargingWidth, OverlayChargingHeight);
+
+            case OverlayKind.Chip:
+                double textWidth = MeasureTextWidth(_viewModel.NotificationTitle, OverlayChipText);
+                return (Math.Clamp(textWidth + OverlayChipChrome, OverlayChipMinWidth, OverlayChipMaxWidth), OverlayChipHeight);
+
+            default:
+                return (NotificationWidth, NotificationHeight);
+        }
+    }
+
+    /// <summary>Mengukur lebar teks dengan huruf yang sama seperti TextBlock acuan (tanpa menunggu binding).</summary>
+    private double MeasureTextWidth(string text, TextBlock reference)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return 0;
+        }
+
+        var formatted = new FormattedText(
+            text,
+            CultureInfo.CurrentUICulture,
+            FlowDirection.LeftToRight,
+            new Typeface(reference.FontFamily, reference.FontStyle, reference.FontWeight, reference.FontStretch),
+            reference.FontSize,
+            Brushes.White,
+            VisualTreeHelper.GetDpi(this).PixelsPerDip);
+
+        return Math.Ceiling(formatted.WidthIncludingTrailingWhitespace);
     }
 
     // Apakah ApplyState terakhir menampilkan mode tersembunyi (dipakai agar "muncul kembali" memakai gerak membuka).
@@ -1323,8 +1402,7 @@ public partial class IslandWindow : Window
         }
         else if (isNotification)
         {
-            visibleWidth = NotificationWidth;
-            visibleHeight = NotificationHeight;
+            (visibleWidth, visibleHeight) = GetOverlaySize(_viewModel.ActiveOverlayKind);
             visualMode = IslandVisualMode.Notification;
         }
         else if (isRecording)
@@ -1379,7 +1457,11 @@ public partial class IslandWindow : Window
         // notifikasi hanya pada mode notifikasi, perekaman hanya pada mode perekaman, dan mode mini tidak menampilkan apa-apa.
         SetContentVisible(CollapsedContent, !isExpanded && !isNotification && !isRecording && !isMini && !isIdleHidden, duration);
         SetContentVisible(ExpandedContent, isExpanded, duration);
-        SetContentVisible(NotificationContent, isNotification, duration);
+        OverlayKind overlayKind = _viewModel.ActiveOverlayKind;
+        SetContentVisible(NotificationContent, isNotification && overlayKind == OverlayKind.Text, duration);
+        SetContentVisible(OverlayLevelContent, isNotification && overlayKind == OverlayKind.Level, duration);
+        SetContentVisible(OverlayChipContent, isNotification && overlayKind == OverlayKind.Chip, duration);
+        SetContentVisible(OverlayChargingContent, isNotification && overlayKind == OverlayKind.Charging, duration);
         SetContentVisible(RecordingContent, isRecording, duration);
 
         // Isi tab yang aktif muncul bertahap saat island BARU dibuka. Saat island menutup, sisa animasi dibatalkan.
@@ -1512,6 +1594,15 @@ public partial class IslandWindow : Window
         }
 
         e.Handled = true;
+    }
+
+    /// <summary>Scroll di atas pill idle: volume (bila diaktifkan dan Hover to expand mati). Scroll di tab bar ditangani TabBar_MouseWheel.</summary>
+    private void Island_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (_viewModel.OnPillScrolled(e.Delta))
+        {
+            e.Handled = true;
+        }
     }
 
     // ---- Event mouse: diteruskan ke ViewModel ----

@@ -355,4 +355,15 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern IntPtr MonitorFromPoint(NativePoint pt, uint flags);
+
+    // ===================================================================
+    // Status Caps Lock (hanya status toggle, bukan pembacaan ketikan)
+    // ===================================================================
+
+    /// <summary>Kode tombol virtual Caps Lock. Satu-satunya tombol yang dibaca iLand lewat GetKeyState.</summary>
+    public const int VK_CAPITAL = 0x14;
+
+    /// <summary>Status satu tombol. Bit rendah hasilnya = status toggle (untuk Caps Lock: menyala atau mati).</summary>
+    [DllImport("user32.dll")]
+    public static extern short GetKeyState(int nVirtKey);
 }

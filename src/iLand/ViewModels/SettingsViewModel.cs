@@ -19,6 +19,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         new SettingsNavItem(SettingsPage.Island, "Island", "IconIsland"),
         new SettingsNavItem(SettingsPage.MusicLyrics, "Music & Lyrics", "IconMusic"),
+        new SettingsNavItem(SettingsPage.MeetingAlerts, "Meeting & Alerts", "IconAlerts"),
         new SettingsNavItem(SettingsPage.Capture, "Capture", "IconCapture"),
         new SettingsNavItem(SettingsPage.General, "General", "IconSettings"),
         new SettingsNavItem(SettingsPage.About, "About", "IconInfo")
@@ -50,6 +51,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             {
                 SettingsPage.Island => _services.GetRequiredService<IslandSettingsViewModel>(),
                 SettingsPage.MusicLyrics => _services.GetRequiredService<MusicSettingsViewModel>(),
+                SettingsPage.MeetingAlerts => _services.GetRequiredService<MeetingAlertsViewModel>(),
                 SettingsPage.Capture => _services.GetRequiredService<CaptureSettingsViewModel>(),
                 SettingsPage.General => _services.GetRequiredService<GeneralSettingsViewModel>(),
                 SettingsPage.About => _services.GetRequiredService<AboutViewModel>(),

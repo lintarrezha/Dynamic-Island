@@ -1,0 +1,143 @@
+<UserControl x:Class="iLand.Views.SettingsPages.MeetingAlertsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sc="clr-namespace:iLand.Views.SettingsControls">
+
+    <!--
+        Halaman Meeting dan Alerts. Gaya bernama (Style) memakai DynamicResource karena kamus SettingsTheme.xaml dimuat di
+        SettingsWindow, sedangkan halaman ini dibuat sebelum dipasang ke jendela. Kontrol bergaya implisit aman.
+    -->
+
+    <UserControl.Resources>
+        <!-- Kotak teks gelap untuk menambah aplikasi yang diabaikan. SettingsTheme belum punya gaya TextBox. -->
+        <Style x:Key="MeetingTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{DynamicResource FillStrongBrush}" CornerRadius="12"
+                                Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <sc:SettingsPageLayout Title="Meeting &amp; Alerts" Subtitle="Meeting mode and the short alerts the island shows.">
+        <StackPanel>
+            <TextBlock Text="Meetings" Style="{DynamicResource SettingsSectionTitle}" />
+            <Border Style="{DynamicResource SettingsCard}">
+                <StackPanel>
+                    <sc:SettingsRow Title="Meeting mode"
+                                    Description="When another app keeps your microphone open for a few seconds, iLand switches to meeting mode. It holds its own alerts, shows a small microphone mark on the island, and can pause your music. iLand only sees which app has the microphone open. It never listens to audio. A meeting in a browser shows up as the browser itself. Off by default.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding MeetingModeEnabled}"
+                                  AutomationProperties.Name="Meeting mode" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Pause music during meetings"
+                                    Description="Pause the music when a meeting starts. It resumes after the meeting only if iLand paused it, nothing else was played, and the song is still the same.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding MeetingPauseMedia}"
+                                  AutomationProperties.Name="Pause music during meetings" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Show mic button during meetings"
+                                    Description="Add a small button on the island to mute or unmute your default microphone. This changes the microphone for the whole system, not for one app. When off, only a small mark is shown.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding MeetingShowMicButton}"
+                                  AutomationProperties.Name="Show mic button during meetings" />
+                    </sc:SettingsRow>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Ignore these apps" Style="{DynamicResource SettingsSectionTitle}" />
+            <Border Style="{DynamicResource SettingsCard}">
+                <StackPanel>
+                    <sc:SettingsRow Title="Apps that are not meetings"
+                                    Description="Some apps keep the microphone open without a meeting, for example a voice chat app on standby. Type the app's process name, like Discord, and press Add." />
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <Grid Margin="16,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Style="{StaticResource MeetingTextBoxStyle}"
+                                 Text="{Binding NewIgnoredApp, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Process name to ignore">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Return" Command="{Binding AddIgnoredAppCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <Button Grid.Column="1" Margin="10,0,0,0" Content="Add"
+                                Style="{DynamicResource SettingsSecondaryButtonStyle}"
+                                Command="{Binding AddIgnoredAppCommand}" />
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding IgnoredApps}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="16,0,16,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" FontSize="13" />
+                                    <Button Grid.Column="1" Content="Remove"
+                                            Style="{DynamicResource SettingsSecondaryButtonStyle}"
+                                            CommandParameter="{Binding}"
+                                            Command="{Binding DataContext.RemoveIgnoredAppCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="No apps are ignored." Margin="16,0,16,14" FontSize="12"
+                               Foreground="{DynamicResource TextTertiaryBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasIgnoredApps}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Device alerts" Style="{DynamicResource SettingsSectionTitle}" />
+            <Border Style="{DynamicResource SettingsCard}">
+                <StackPanel>
+                    <sc:SettingsRow Title="Volume &amp; brightness on island"
+                                    Description="Show a short bar on the island when the volume or brightness changes. The bar appears only when the value really changes, so it does not show when you press a key at the lowest or highest level. Windows still shows its own volume bar too, and iLand cannot hide it. Brightness works only on a laptop's built-in screen.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding ShowVolumeBrightnessOverlay}"
+                                  AutomationProperties.Name="Volume and brightness on island" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Charging animation"
+                                    Description="Show a small battery panel when you plug in the charger, and once when the battery is full.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding ChargingAnimationEnabled}"
+                                  AutomationProperties.Name="Charging animation" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Bluetooth device connected"
+                                    Description="Show the device name when paired headphones, earbuds, or speakers connect. iLand only reads which paired devices are connected. It does not scan for nearby devices or read battery levels.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding BluetoothConnectedOverlay}"
+                                  AutomationProperties.Name="Bluetooth device connected" />
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Caps Lock indicator"
+                                    Description="Show a small badge when Caps Lock turns on or off. iLand only checks whether Caps Lock is on. It never records what you type. Off by default.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding CapsLockOverlay}"
+                                  AutomationProperties.Name="Caps Lock indicator" />
+                    </sc:SettingsRow>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </sc:SettingsPageLayout>
+</UserControl>

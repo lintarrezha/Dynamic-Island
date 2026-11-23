@@ -18,9 +18,6 @@ namespace iLand.ViewModels;
 /// </summary>
 public partial class IslandViewModel : ObservableObject, IDisposable
 {
-    private const int NotificationDurationSeconds = 6;
-    private const int NotificationAfterHoverSeconds = 2;
-
     private readonly IClockService _clockService;
     private readonly IBatteryService _batteryService;
     private readonly IMediaService _mediaService;
@@ -29,10 +26,24 @@ public partial class IslandViewModel : ObservableObject, IDisposable
 
     public IAudioLevelService AudioMeter => _audioLevel;
 
+    // ---- Mode rapat (tanda atau tombol mic di pill idle) ----
+
+    /// <summary>Tombol mic bisa ditekan (mode rapat aktif dan diizinkan di Settings).</summary>
+    public bool ShowMeetingMicButton => _meeting.IsMeetingActive && _settingsService.Current.MeetingShowMicButton;
+
+    /// <summary>Hanya tanda mikrofon kecil (mode rapat aktif tetapi tombol dimatikan di Settings).</summary>
+    public bool ShowMeetingIndicator => _meeting.IsMeetingActive && !_settingsService.Current.MeetingShowMicButton;
+
+    /// <summary>Mikrofon default sedang dibisukan (ikon berubah menjadi merah bergaris).</summary>
+    public bool IsMicMuted => _meeting.IsMicMuted;
+
     /// <summary>Volume aplikasi pemutar media (slider di tab Music).</summary>
     public IAppVolumeService AppVolume => _appVolume;
     private readonly ITimerService _timerService;
     private readonly INotificationService _notificationService;
+    private readonly IOverlayService _overlayService;
+    private readonly IScrollVolumeService _scrollVolume;
+    private readonly IMeetingService _meeting;
     private readonly IWindowContextService _windowContext;
     private readonly ISettingsService _settingsService;
     private readonly IWindowService _windowService;
@@ -41,9 +52,6 @@ public partial class IslandViewModel : ObservableObject, IDisposable
 
     // Timer penunda collapse. Selama timer berjalan dan mouse kembali masuk, collapse dibatalkan.
     private readonly DispatcherTimer _collapseTimer;
-
-    // Timer penutup notifikasi.
-    private readonly DispatcherTimer _notificationTimer;
 
     // Dipakai agar perubahan dari service tidak dianggap sebagai klik pengguna pada pilihan mode timer.
     private bool _isSyncingTimer;
@@ -145,6 +153,34 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     public bool HasNotificationThumbnail => NotificationThumbnail is not null;
 
     partial void OnNotificationThumbnailChanged(ImageSource? value) => OnPropertyChanged(nameof(HasNotificationThumbnail));
+
+    // ---- Overlay sementara (volume, kecerahan, perangkat, Caps Lock, dan notifikasi teks). IsNotificationVisible = ada overlay tampil ----
+
+    /// <summary>Jenis tampilan overlay yang sedang aktif. Window memilih isi dan ukurannya dari sini.</summary>
+    [ObservableProperty]
+    private OverlayKind _activeOverlayKind = OverlayKind.Text;
+
+    /// <summary>Nama resource ikon (Navigation.xaml) untuk overlay Level dan Chip.</summary>
+    [ObservableProperty]
+    private string _overlayIconKey = string.Empty;
+
+    /// <summary>Isi bar 0 sampai 1 untuk overlay Level. Berubah terus saat volume digeser, jadi TIDAK memicu perubahan ukuran island.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(OverlayPercent))]
+    private double _overlayLevel;
+
+    /// <summary>Isi dalam persen bulat. Dipakai cincin baterai di panel charging.</summary>
+    public int OverlayPercent => (int)Math.Round(OverlayLevel * 100);
+
+    [ObservableProperty]
+    private string _overlayValueText = string.Empty;
+
+    /// <summary>
+    /// Naik setiap kali ukuran overlay yang sedang tampil harus dihitung ulang (jenis berganti, atau teks chip berganti).
+    /// IslandWindow memanggil ApplyState saat nilai ini berubah. Update bar level biasa tidak menaikkannya.
+    /// </summary>
+    [ObservableProperty]
+    private int _overlayRevision;
 
     // ---- Baterai ----
     [ObservableProperty]
@@ -285,6 +321,9 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         IAppVolumeService appVolume,
         ITimerService timerService,
         INotificationService notificationService,
+        IOverlayService overlayService,
+        IScrollVolumeService scrollVolume,
+        IMeetingService meeting,
         IWindowContextService windowContext,
         ISettingsService settingsService,
         IWindowService windowService,
@@ -304,6 +343,9 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         _appVolume = appVolume;
         _timerService = timerService;
         _notificationService = notificationService;
+        _overlayService = overlayService;
+        _scrollVolume = scrollVolume;
+        _meeting = meeting;
         _windowContext = windowContext;
         _settingsService = settingsService;
         _windowService = windowService;
@@ -325,15 +367,13 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         _collapseTimer = new DispatcherTimer();
         _collapseTimer.Tick += OnCollapseTimerTick;
 
-        _notificationTimer = new DispatcherTimer();
-        _notificationTimer.Tick += OnNotificationTimerTick;
-
         UpdateClock();
         UpdateBattery();
         UpdateMedia();
         UpdateTimer();
         UpdateModeFlags();
         UpdateLyricsContext();
+        UpdateOverlaySuppression();
 
         _clockService.Ticked += OnClockTicked;
         _captureService.CaptureStarted += OnCaptureStarted;
@@ -342,9 +382,11 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         _mediaService.Changed += OnMediaChanged;
         _timerService.Changed += OnTimerChanged;
         _timerService.PhaseCompleted += OnTimerPhaseCompleted;
-        _notificationService.NotificationRequested += OnNotificationRequested;
+        _overlayService.Changed += OnOverlayChanged;
         _windowContext.Changed += OnContextChanged;
         _settingsService.SettingsChanged += OnSettingsChanged;
+        _meeting.Changed += OnMeetingChanged;
+        _lastMusicStyle = _settingsService.Current.MusicStyle;
 
         ApplyEnabledTabs(); // catat daftar tab yang menyala saat startup
     }
@@ -624,12 +666,14 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     partial void OnShouldHideForFullscreenChanged(bool value)
     {
         UpdateAudioMeter();
+        UpdateOverlaySuppression();
     }    
     // Dua method ini dibuat otomatis oleh [ObservableProperty]: dipanggil saat nilainya berubah.
     partial void OnIsExpandedChanged(bool value)
     {
         UpdateModeFlags();      // juga memperbarui meter suara (lewat UpdateModeFlags)
         UpdateLyricsContext();  // lirik hanya terlihat saat island terbuka di tab Music
+        UpdateOverlaySuppression();
     }
 
     partial void OnIsNotificationVisibleChanged(bool value)
@@ -681,11 +725,61 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     };
 
     /// <summary>True jika tab aktif meminta lebar penuh: tab Music dengan panel lirik terbuka.</summary>
-    public bool WantsWideLayout => SelectedTab == IslandTab.Music && HasMedia && Lyrics.IsOpen;
+    public bool WantsWideLayout => SelectedTab == IslandTab.Music && HasMedia && Lyrics.IsOpen && !IsGlassStyle;
 
-    public bool ShowNormalMusicLayout => HasMedia && !Lyrics.IsOpen;
+    private bool IsGlassStyle => _settingsService.Current.MusicStyle == MusicTabStyle.Glass;
 
-    public bool ShowLyricsLayout => HasMedia && Lyrics.IsOpen;
+    public bool ShowNormalMusicLayout => HasMedia && !Lyrics.IsOpen && !IsGlassStyle;
+
+    public bool ShowLyricsLayout => HasMedia && Lyrics.IsOpen && !IsGlassStyle;
+
+    /// <summary>Tab Music tampil dengan gaya Glass (ada media dan gaya Glass dipilih di Settings).</summary>
+    public bool ShowGlassMusicLayout => HasMedia && IsGlassStyle;
+
+    /// <summary>Gaya Glass tetapi lirik masih dimatikan di Settings: kartu menawarkan "Turn on lyrics".</summary>
+    public bool ShowGlassLyricsOff => IsGlassStyle && !_settingsService.Current.LyricsEnabled;
+
+    private MusicTabStyle _lastMusicStyle;
+
+    /// <summary>Latar Glass: sampul yang diperbesar dan di-blur (gambar kecil). Null bila bukan gaya Glass atau tanpa sampul.</summary>
+    [ObservableProperty]
+    private ImageSource? _glassBackdrop;
+
+    // Sampul yang dipakai untuk membuat GlassBackdrop terakhir, agar tidak dibuat ulang untuk sampul yang sama.
+    private ImageSource? _glassBackdropSource;
+
+    /// <summary>Latar blur terlihat: island terbuka di tab Music dengan gaya Glass dan ada media.</summary>
+    public bool ShowGlassBackdrop => SelectedTab == IslandTab.Music && ShowGlassMusicLayout;
+
+    /// <summary>Membuat latar Glass dari sampul bila perlu (hanya gaya Glass dengan media). Di luar itu gambar dilepas.</summary>
+    private void UpdateGlassBackdrop()
+    {
+        if (!(IsGlassStyle && HasMedia))
+        {
+            _glassBackdropSource = null;
+            GlassBackdrop = null;
+            return;
+        }
+
+        if (ReferenceEquals(_glassBackdropSource, MediaArtwork) && GlassBackdrop is not null)
+        {
+            return;
+        }
+
+        _glassBackdropSource = MediaArtwork;
+        GlassBackdrop = CoverBlur.Create(MediaArtwork);
+    }
+
+    private void NotifyMusicStyleProperties()
+    {
+        OnPropertyChanged(nameof(WantsWideLayout));
+        OnPropertyChanged(nameof(ShowNormalMusicLayout));
+        OnPropertyChanged(nameof(ShowLyricsLayout));
+        OnPropertyChanged(nameof(ShowGlassMusicLayout));
+        OnPropertyChanged(nameof(ShowGlassLyricsOff));
+        OnPropertyChanged(nameof(ShowGlassBackdrop));
+        UpdateGlassBackdrop();
+    }
 
     public bool ShowLyricsConfirm => HasMedia && Lyrics.IsConfirmVisible;
 
@@ -695,6 +789,10 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ShowLyricsLayout));
         OnPropertyChanged(nameof(ShowLyricsConfirm));
         OnPropertyChanged(nameof(WantsWideLayout));
+        OnPropertyChanged(nameof(ShowGlassMusicLayout));
+        OnPropertyChanged(nameof(ShowGlassBackdrop));
+        UpdateGlassBackdrop();
+        UpdateLyricsContext(); // gaya Glass: lirik otomatis dimuat saat media baru muncul di tab Music
     }
 
     private void OnLyricsPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -716,7 +814,16 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     /// <summary>Lirik hanya perlu diperbarui saat benar-benar terlihat: island terbuka di tab Music.</summary>
     private void UpdateLyricsContext()
     {
-        Lyrics.SetContextVisible(_isWindowVisible && IsExpanded && SelectedTab == IslandTab.Music);
+        bool visible = _isWindowVisible && IsExpanded && SelectedTab == IslandTab.Music;
+        Lyrics.SetContextVisible(visible);
+        OnPropertyChanged(nameof(ShowGlassBackdrop)); // tab berganti: latar ikut muncul atau memudar
+
+        // Gaya Glass: lirik selalu tampil di kartunya, jadi dimuat otomatis saat tab Music terlihat,
+        // tetapi hanya bila lirik sudah dinyalakan di Settings (OpenIfEnabled tidak melakukan apa pun bila belum).
+        if (visible && HasMedia && IsGlassStyle)
+        {
+            Lyrics.OpenIfEnabled();
+        }
     }
 
     private void OnTodoItemsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
@@ -821,7 +928,40 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     private void OnSettingsChanged(object? sender, EventArgs e)
     {
         ApplyEnabledTabs();
+        NotifyMeetingProperties(); // "Show mic button" bisa berubah
+
+        MusicTabStyle style = _settingsService.Current.MusicStyle;
+        if (style != _lastMusicStyle)
+        {
+            _lastMusicStyle = style;
+            if (style == MusicTabStyle.Classic)
+            {
+                Lyrics.CloseLyricsPanel(); // Glass membuka lirik otomatis. Classic kembali ke tombol lirik.
+            }
+        }
+
+        NotifyMusicStyleProperties();
+        UpdateLyricsContext();
         UpdateModeFlags();
+    }
+
+    private void OnMeetingChanged(object? sender, EventArgs e)
+    {
+        NotifyMeetingProperties();
+    }
+
+    private void NotifyMeetingProperties()
+    {
+        OnPropertyChanged(nameof(ShowMeetingMicButton));
+        OnPropertyChanged(nameof(ShowMeetingIndicator));
+        OnPropertyChanged(nameof(IsMicMuted));
+    }
+
+    /// <summary>Membisukan atau membunyikan mikrofon default sistem (tombol mic di pill saat rapat).</summary>
+    [RelayCommand]
+    private void ToggleMic()
+    {
+        _meeting.ToggleMic();
     }
 
     private void UpdateModeFlags()
@@ -847,6 +987,24 @@ public partial class IslandViewModel : ObservableObject, IDisposable
 
     // ---- Aturan interaksi mouse (dipanggil oleh View) ----
 
+    /// <summary>
+    /// Scroll di atas island yang tertutup mengubah volume sistem, bila diaktifkan di Settings.
+    /// Hanya bila "Hover to expand" mati: dengan hover aktif, island langsung terbuka saat pointer menyentuhnya, lalu scroll
+    /// di tab bar memindahkan tab. Mengembalikan true bila scroll dipakai (agar tidak diteruskan ke aplikasi lain).
+    /// </summary>
+    public bool OnPillScrolled(int wheelDelta)
+    {
+        var settings = _settingsService.Current;
+        if (!settings.ScrollVolumeEnabled || settings.HoverToExpand
+            || IsExpanded || IsMini || IsIdleHidden || IsRecording)
+        {
+            return false;
+        }
+
+        _scrollVolume.Adjust(wheelDelta);
+        return true;
+    }
+
     /// <summary>Mouse masuk ke area island.</summary>
     public void OnPointerEntered()
     {
@@ -856,7 +1014,7 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         // Saat notifikasi tampil, hover hanya menahan notifikasi agar tidak hilang. Island tidak melebar.
         if (IsNotificationVisible)
         {
-            _notificationTimer.Stop();
+            _overlayService.Hold();
             return;
         }
 
@@ -884,7 +1042,7 @@ public partial class IslandViewModel : ObservableObject, IDisposable
 
         if (IsNotificationVisible)
         {
-            StartNotificationTimer(NotificationAfterHoverSeconds);
+            _overlayService.Release(MotionTokens.OverlayAfterHoverMs);
             return;
         }
 
@@ -1058,53 +1216,58 @@ public partial class IslandViewModel : ObservableObject, IDisposable
 
     // ---- Notifikasi ----
 
-    private void OnNotificationRequested(object? sender, NotificationEventArgs e)
+    /// <summary>
+    /// Island yang sedang dibuka (pengguna sedang melihat) atau disembunyikan karena fullscreen tidak menampilkan overlay.
+    /// Bila overlay sedang tampil saat island dibuka, antrean dikosongkan oleh OverlayService. Suara notifikasi
+    /// (hanya untuk notifikasi teks) tetap diputar oleh NotificationService.
+    /// </summary>
+    private void UpdateOverlaySuppression()
     {
-        // Jika island sedang dibuka (pengguna sedang melihat) atau disembunyikan karena fullscreen,
-        // pop-up tidak perlu ditampilkan. Suara tetap diputar oleh NotificationService.
-        if (IsExpanded || ShouldHideForFullscreen)
+        _overlayService.IsSuppressed = IsExpanded || ShouldHideForFullscreen;
+    }
+
+    /// <summary>Overlay yang tampil berubah (muncul, diperbarui di tempat, diganti, atau hilang).</summary>
+    private void OnOverlayChanged(object? sender, EventArgs e)
+    {
+        OverlayRequest? overlay = _overlayService.Current;
+        if (overlay is null)
         {
+            IsNotificationVisible = false;
             return;
         }
 
-        NotificationTitle = e.Title;
-        NotificationMessage = e.Message;
-        NotificationGlyph = GetNotificationGlyph(e.Kind);
-        NotificationThumbnail = e.Thumbnail; // null untuk notifikasi tanpa gambar, jadi pratinjau lama tidak menempel
+        // Ukuran island hanya perlu dihitung ulang bila jenis berganti atau teks chip berganti.
+        // Bar level yang terus bergerak hanya mengubah OverlayLevel dan OverlayValueText.
+        bool sizeChanged = overlay.Kind != ActiveOverlayKind
+                           || (overlay.Kind == OverlayKind.Chip && overlay.Title != NotificationTitle);
+
+        NotificationTitle = overlay.Title;
+        NotificationMessage = overlay.Message;
+        NotificationGlyph = overlay.Glyph;
+        NotificationThumbnail = overlay.Thumbnail; // null untuk overlay tanpa gambar, jadi pratinjau lama tidak menempel
+        OverlayIconKey = overlay.IconKey;
+        OverlayLevel = overlay.Level;
+        OverlayValueText = overlay.ValueText;
+        ActiveOverlayKind = overlay.Kind;
 
         _collapseTimer.Stop();
-        IsNotificationVisible = true;
-        StartNotificationTimer(NotificationDurationSeconds);
-    }
 
-    private void StartNotificationTimer(int seconds)
-    {
-        _notificationTimer.Stop();
-        _notificationTimer.Interval = TimeSpan.FromSeconds(seconds);
-        _notificationTimer.Start();
-    }
-
-    private void OnNotificationTimerTick(object? sender, EventArgs e)
-    {
-        DismissNotification();
+        if (IsNotificationVisible)
+        {
+            if (sizeChanged)
+            {
+                OverlayRevision++;
+            }
+        }
+        else
+        {
+            IsNotificationVisible = true;
+        }
     }
 
     private void DismissNotification()
     {
-        _notificationTimer.Stop();
-        IsNotificationVisible = false;
-    }
-
-    // Karakter simbol dari font "Segoe UI Symbol" yang sudah ada di Windows.
-    private static string GetNotificationGlyph(NotificationKind kind)
-    {
-        return kind switch
-        {
-            NotificationKind.Success => "\u2713",     // centang
-            NotificationKind.Warning => "\u26A0",     // segitiga peringatan
-            NotificationKind.BatteryFull => "\u26A1", // petir
-            _ => "\u2139"                             // huruf i
-        };
+        _overlayService.Dismiss();
     }
 
     // ---- Perintah tombol ----
@@ -1333,7 +1496,8 @@ public partial class IslandViewModel : ObservableObject, IDisposable
                 NotificationKind.Warning);
         }
 
-        if (_wasBatteryFull == false && battery.IsFull)
+        // Bila animasi charging menyala, "Fully charged" sudah ditampilkan sekali oleh ChargingOverlayService: jangan dobel.
+        if (_wasBatteryFull == false && battery.IsFull && !_settingsService.Current.ChargingAnimationEnabled)
         {
             _notificationService.Show(
                 "Battery full",
@@ -1362,6 +1526,7 @@ public partial class IslandViewModel : ObservableObject, IDisposable
         MediaArtist = media.Artist;
         MediaSourceApp = media.SourceApp;
         MediaArtwork = media.Artwork;
+        UpdateGlassBackdrop(); // sampul baru: latar Glass dibuat ulang (hanya bila gaya Glass)
         UpdateAccent(media.Artwork);
         IsMediaPlaying = media.IsPlaying;
         PlayPauseGlyph = media.IsPlaying ? "\uE769" : "\uE768";
@@ -1606,19 +1771,18 @@ public partial class IslandViewModel : ObservableObject, IDisposable
     {
         _collapseTimer.Stop();
         _collapseTimer.Tick -= OnCollapseTimerTick;
-        _notificationTimer.Stop();
-        _notificationTimer.Tick -= OnNotificationTimerTick;
 
         _clockService.Ticked -= OnClockTicked;
         _batteryService.Changed -= OnBatteryChanged;
         _mediaService.Changed -= OnMediaChanged;
         _timerService.Changed -= OnTimerChanged;
         _timerService.PhaseCompleted -= OnTimerPhaseCompleted;
-        _notificationService.NotificationRequested -= OnNotificationRequested;
+        _overlayService.Changed -= OnOverlayChanged;
         _captureService.CaptureStarted -= OnCaptureStarted;
         _recordingService.StateChanged -= OnRecordingStateChanged;
         _windowContext.Changed -= OnContextChanged;
         _settingsService.SettingsChanged -= OnSettingsChanged;
+        _meeting.Changed -= OnMeetingChanged;
         Todo.Items.CollectionChanged -= OnTodoItemsChanged;
         Mixer.Apps.CollectionChanged -= OnMixerAppsChanged;
         Mixer.SetActive(false);

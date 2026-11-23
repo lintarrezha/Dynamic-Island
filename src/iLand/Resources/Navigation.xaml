@@ -27,6 +27,11 @@
     <StreamGeometry x:Key="IconEyedropper">M 3,21 L 4,16 L 14,6 L 18,10 L 8,20 Z M 13,7 L 17,3 L 21,7 L 17,11</StreamGeometry>
     <StreamGeometry x:Key="IconVolumeOn">M 3,9.5 L 3,14.5 L 7,14.5 L 12,18.5 L 12,5.5 L 7,9.5 Z M 15.5,9 A 4,4 0 0 1 15.5,15 M 18.2,6.4 A 8,8 0 0 1 18.2,17.6</StreamGeometry>
     <StreamGeometry x:Key="IconVolumeOff">M 3,9.5 L 3,14.5 L 7,14.5 L 12,18.5 L 12,5.5 L 7,9.5 Z M 16,9.5 L 21,14.5 M 21,9.5 L 16,14.5</StreamGeometry>
+    <StreamGeometry x:Key="IconMic">M 12,3 A 3,3 0 0 1 15,6 V 11 A 3,3 0 0 1 9,11 V 6 A 3,3 0 0 1 12,3 Z M 6.5,11 A 5.5,5.5 0 0 0 17.5,11 M 12,16.5 V 20.5 M 8.5,20.5 H 15.5</StreamGeometry>
+    <StreamGeometry x:Key="IconMicOff">M 12,3 A 3,3 0 0 1 15,6 V 11 A 3,3 0 0 1 9,11 V 6 A 3,3 0 0 1 12,3 Z M 6.5,11 A 5.5,5.5 0 0 0 17.5,11 M 12,16.5 V 20.5 M 8.5,20.5 H 15.5 M 4,4 L 20,20</StreamGeometry>
+    <StreamGeometry x:Key="IconAlerts">M 6,16 V 11 A 6,6 0 0 1 18,11 V 16 L 19.5,18 H 4.5 Z M 10,20.5 A 2,2 0 0 0 14,20.5</StreamGeometry>
+    <StreamGeometry x:Key="IconCapsLock">M 12,3.5 L 4.5,12 H 9 V 17 H 15 V 12 H 19.5 Z M 9,20.5 H 15</StreamGeometry>
+    <StreamGeometry x:Key="IconVolumeLow">M 3,9.5 L 3,14.5 L 7,14.5 L 12,18.5 L 12,5.5 L 7,9.5 Z M 15.5,9.5 A 3.5,3.5 0 0 1 15.5,14.5</StreamGeometry>
     <StreamGeometry x:Key="IconTimer">M19.5 13.5 A7.5 7.5 0 1 1 4.5 13.5 A7.5 7.5 0 1 1 19.5 13.5 Z M10 3 H14 M12 13.5 V9.5 M17.8 6.2 L19.2 4.8</StreamGeometry>
     <!-- Todo: checklist, tiga baris, tiap baris tanda centang di kiri dan satu garis di kanan. -->
     <StreamGeometry x:Key="IconTodo">M3.5 6.3 L5.7 8.5 L9 4 M12.5 6.5 H20.5 M3.5 12.3 L5.7 14.5 L9 10 M12.5 12.5 H20.5 M3.5 18.3 L5.7 20.5 L9 16 M12.5 18.5 H20.5</StreamGeometry>

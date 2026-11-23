@@ -22,6 +22,65 @@
     <Window.Resources>
         <conv:EnumMatchConverter x:Key="EnumMatch" />
         <conv:EnumVisibilityConverter x:Key="EnumVisibility" />
+        <conv:ResourceKeyConverter x:Key="ResourceKey" />
+
+        <!-- Mikrofon di pill saat mode rapat: putih bila aktif, merah bergaris bila dibisukan. -->
+        <Style x:Key="MeetingMicPathStyle" TargetType="Path">
+            <Setter Property="Data" Value="{StaticResource IconMic}" />
+            <Setter Property="Stroke" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="StrokeThickness" Value="1.8" />
+            <Setter Property="StrokeLineJoin" Value="Round" />
+            <Setter Property="StrokeStartLineCap" Value="Round" />
+            <Setter Property="StrokeEndLineCap" Value="Round" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMicMuted}" Value="True">
+                    <Setter Property="Data" Value="{StaticResource IconMicOff}" />
+                    <Setter Property="Stroke" Value="{StaticResource DangerBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Tombol mic kecil di pill: lingkaran 24 yang menyala saat hover. -->
+        <Style x:Key="MeetingMicButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="12" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource FillStrongBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Bar tipis overlay volume dan kecerahan: jalur 10% putih, isi putih penuh. Tidak menerima klik. Isinya mengikuti Value 0 sampai 1. -->
+        <Style x:Key="OverlayLevelBarStyle" TargetType="ProgressBar">
+            <Setter Property="Height" Value="4" />
+            <Setter Property="Minimum" Value="0" />
+            <Setter Property="Maximum" Value="1" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid>
+                            <Border x:Name="PART_Track" Height="4" CornerRadius="2"
+                                    Background="{StaticResource FillStrongBrush}" />
+                            <Border x:Name="PART_Indicator" Height="4" CornerRadius="2" HorizontalAlignment="Left"
+                                    Background="{StaticResource TextPrimaryBrush}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <!-- Kartu aksi cepat di tab Home: tinggi 44, latar CardBrush, hover HoverBrush. Isinya diberikan lewat Content. -->
         <Style x:Key="QuickActionCardStyle" TargetType="Button">
@@ -105,7 +164,8 @@
                 PreviewDragLeave="Island_PreviewDragLeave"
                 PreviewDrop="Island_PreviewDrop"
                 MouseEnter="Island_MouseEnter"
-                MouseLeave="Island_MouseLeave">
+                MouseLeave="Island_MouseLeave"
+                MouseWheel="Island_MouseWheel">
         <Border x:Name="IslandHost"
                 Width="200" Height="40"
                 Background="#01000000"
@@ -207,6 +267,24 @@
 
                         <!-- Kanan: persen baterai (idle), sampul (mode media), visualizer (mode media dan lirik). -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- Mode rapat: tombol mic (bisukan atau bunyikan) atau hanya tanda mikrofon -->
+                            <Button Style="{StaticResource MeetingMicButtonStyle}" Margin="0,0,6,0"
+                                    Command="{Binding ToggleMicCommand}"
+                                    AutomationProperties.Name="Mute or unmute the microphone"
+                                    Visibility="{Binding ShowMeetingMicButton, Converter={StaticResource BoolToVisibility}}">
+                                <Viewbox Width="14" Height="14">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Style="{StaticResource MeetingMicPathStyle}" />
+                                    </Canvas>
+                                </Viewbox>
+                            </Button>
+                            <Viewbox Width="14" Height="14" Margin="0,0,8,0" VerticalAlignment="Center"
+                                     Visibility="{Binding ShowMeetingIndicator, Converter={StaticResource BoolToVisibility}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource MeetingMicPathStyle}" />
+                                </Canvas>
+                            </Viewbox>
+
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                         Visibility="{Binding PillShowRightBattery, Converter={StaticResource BoolToVisibility}}">
                                 <components:BatteryIndicator RingSize="18"
@@ -297,6 +375,70 @@
                         </StackPanel>
                     </Grid>
 
+                    <!-- ===== Overlay Level (volume, kecerahan): ikon, bar, angka. Diperbarui di tempat. ===== -->
+                    <Grid x:Name="OverlayLevelContent" Margin="18,0" Opacity="0" IsHitTestVisible="False">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Viewbox Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="{Binding OverlayIconKey, Converter={StaticResource ResourceKey}}"
+                                      Stroke="{StaticResource TextPrimaryBrush}" StrokeThickness="1.8"
+                                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                            </Canvas>
+                        </Viewbox>
+
+                        <ProgressBar Grid.Column="1" Margin="12,0" VerticalAlignment="Center"
+                                     Style="{StaticResource OverlayLevelBarStyle}"
+                                     Value="{Binding OverlayLevel, Mode=OneWay}" />
+
+                        <TextBlock Grid.Column="2" MinWidth="28" VerticalAlignment="Center" TextAlignment="Right"
+                                   Text="{Binding OverlayValueText}"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   FontSize="13" FontWeight="SemiBold" />
+                    </Grid>
+
+                    <!-- ===== Overlay Chip (perangkat tersambung, Caps Lock): ikon dan satu baris teks. Lebar mengikuti teks (IslandWindow.GetOverlaySize). ===== -->
+                    <Grid x:Name="OverlayChipContent" Margin="16,0" Opacity="0" IsHitTestVisible="False">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Viewbox Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="{Binding OverlayIconKey, Converter={StaticResource ResourceKey}}"
+                                      Stroke="{StaticResource TextPrimaryBrush}" StrokeThickness="1.8"
+                                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                            </Canvas>
+                        </Viewbox>
+
+                        <TextBlock x:Name="OverlayChipText" Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                                   Text="{Binding NotificationTitle}"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+
+                    <!-- ===== Overlay Charging: cincin baterai besar (petir bila mengisi), persen, keterangan ===== -->
+                    <Grid x:Name="OverlayChargingContent" Opacity="0" IsHitTestVisible="False">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <components:BatteryIndicator RingSize="64" HorizontalAlignment="Center"
+                                                         Percent="{Binding OverlayPercent}"
+                                                         IsCharging="{Binding IsBatteryCharging}" />
+                            <TextBlock Margin="0,8,0,0" HorizontalAlignment="Center"
+                                       Text="{Binding OverlayValueText}"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock Margin="0,1,0,0" HorizontalAlignment="Center"
+                                       Text="{Binding NotificationTitle}"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="11" />
+                        </StackPanel>
+                    </Grid>
+
                     <!-- ===== Recording: titik merah, teks, timer, tombol stop ===== -->
                     <Grid x:Name="RecordingContent" Margin="16,0,10,0" Opacity="0" IsHitTestVisible="False">
                         <Grid.ColumnDefinitions>
@@ -328,6 +470,42 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
+
+                        <!--
+                            Latar gaya Glass: sampul lagu yang diperbesar dan di-blur (gambar kecil yang dibuat sekali per lagu,
+                            lihat Helpers/CoverBlur.cs), ditutup lapisan gelap 40 persen agar teks terbaca. Memenuhi seluruh island,
+                            termasuk di belakang header. Tanpa Effect atau OpacityMask. Muncul dan memudar mengikuti tab Music.
+                        -->
+                        <Grid Grid.RowSpan="2" IsHitTestVisible="False" Opacity="0">
+                            <Grid.CacheMode>
+                                <BitmapCache RenderAtScale="1" />
+                            </Grid.CacheMode>
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ShowGlassBackdrop}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.28" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.14" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+                            <Image Source="{Binding GlassBackdrop}" Stretch="Fill"
+                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                            <Border Background="#66000000" />
+                        </Grid>
 
                         <!-- Header: tinggi 36, margin kiri-kanan 16 dan atas 10 -->
                         <Grid Grid.Row="0" Height="36" Margin="16,10,16,0">
@@ -499,7 +677,11 @@
                             <components:ControlView DataContext="{Binding ControlPanel}" />
 
                             <!-- ===== Tab Music (isinya ada di Views/Components/MusicTabView.xaml) ===== -->
-                            <components:MusicTabView />
+                            <!-- Satu anak TabHost untuk tab Music: gaya Classic dan Glass saling bergantian lewat ViewModel. -->
+                            <Grid>
+                                <components:MusicTabView />
+                                <components:MusicGlassView />
+                            </Grid>
 
                             <!-- ===== Tab Mixer: volume master dan per aplikasi ===== -->
                             <components:MixerView DataContext="{Binding Mixer}" />

@@ -55,6 +55,32 @@ public static class MotionTokens
     /// <summary>Baris aplikasi di tab Mixer masuk atau keluar (tinggi + fade). Tidak ikut pengali Settings.</summary>
     public const double RowMs = 220;
 
+    // ---- Overlay sementara di island (antrean: OverlayService) ----
+
+    /// <summary>Bar volume atau kecerahan: hilang sekian ms setelah perubahan terakhir. Tidak ikut pengali Settings.</summary>
+    public const int OverlayLevelMs = 1500;
+
+    /// <summary>Chip (perangkat tersambung, Caps Lock) tampil selama ini.</summary>
+    public const int OverlayChipMs = 2500;
+
+    /// <summary>Chip "Caps Lock On/Off" tampil selama ini.</summary>
+    public const int OverlayCapsLockMs = 1500;
+
+    /// <summary>Chip "perangkat Bluetooth tersambung" tampil selama ini.</summary>
+    public const int OverlayDeviceMs = 3000;
+
+    /// <summary>Panel charging (cincin baterai besar) tampil selama ini, lalu island kembali ke pill idle.</summary>
+    public const int OverlayChargingMs = 3000;
+
+    /// <summary>Notifikasi teks (timer selesai, screenshot tersimpan, dst.) tampil selama ini.</summary>
+    public const int OverlayAlertMs = 6000;
+
+    /// <summary>Sisa waktu tampil setelah pointer meninggalkan overlay yang tadi ditahan.</summary>
+    public const int OverlayAfterHoverMs = 2000;
+
+    /// <summary>Jeda antara satu overlay yang selesai dan overlay berikutnya yang menunggu giliran.</summary>
+    public const int OverlayGapMs = 200;
+
     // ---- Jendela Settings ----
 
     /// <summary>Toggle di Settings: bulatan bergeser dan warna jalur berubah. Dipakai langsung dari XAML (x:Static).</summary>
@@ -122,8 +148,21 @@ public static class MotionTokens
     /// <summary>Jeda antar elemen (milidetik dasar, ikut pengali).</summary>
     public const double StaggerDelayMs = 30;
 
-    /// <summary>Jumlah elemen maksimum yang dianimasikan per tab. Isi 0 untuk mematikan efek ini.</summary>
-    public const int StaggerMaxElements = 4;
+    /// <summary>
+    /// Jumlah elemen maksimum yang dianimasikan per tab. Isi 0 untuk mematikan efek ini.
+    /// Bawaan 0: animasi di dalam panel yang sedang memudar membuat panel itu tidak bisa di-cache (lihat TabCrossfadeBitmapCache),
+    /// dan efeknya menambah beberapa animasi sekaligus tepat di awal pindah tab. Isi 3 atau 4 untuk menghidupkannya lagi
+    /// (dan matikan TabCrossfadeBitmapCache bila ingin membandingkan).
+    /// </summary>
+    public const int StaggerMaxElements = 0;
+
+    /// <summary>
+    /// true: selama crossfade pindah tab, panel yang memudar digambar SEKALI ke tekstur (BitmapCache) lalu hanya transparansi
+    /// tekstur yang dianimasikan. Tanpa ini, seluruh isi panel (teks, ikon, lirik, gambar) digambar ulang di setiap frame.
+    /// Isi panel tidak berubah ukuran selama animasi karena ukurannya dikunci (FreezeExpandedContentSize), jadi cache stabil.
+    /// Cache dilepas lagi saat crossfade selesai.
+    /// </summary>
+    public const bool TabCrossfadeBitmapCache = true;
 
     /// <summary>Skala tombol saat ditekan (PressFeedback).</summary>
     public const double PressScale = 0.94;

@@ -87,6 +87,44 @@ public sealed class MediaService : IMediaService, IDisposable
         }
     }
 
+    public async Task<bool> PauseAsync()
+    {
+        var session = _currentSession;
+        if (session is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            return await session.TryPauseAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to pause");
+            return false;
+        }
+    }
+
+    public async Task<bool> PlayAsync()
+    {
+        var session = _currentSession;
+        if (session is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            return await session.TryPlayAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to play");
+            return false;
+        }
+    }
+
     public async Task NextTrackAsync()
     {
         var session = _currentSession;

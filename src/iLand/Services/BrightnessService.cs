@@ -18,6 +18,8 @@ public sealed class BrightnessService : IBrightnessService
     private readonly Dispatcher _ui;
     private readonly object _writeLock = new();
 
+    private readonly HashSet<string> _owners = new();
+
     private ManagementEventWatcher? _watcher;
     private bool _attached;
     private int _attachVersion;
@@ -37,8 +39,15 @@ public sealed class BrightnessService : IBrightnessService
 
     public event EventHandler? Changed;
 
-    public void Attach()
+    public void Attach() => Attach("ui");
+
+    public void Detach() => Detach("ui");
+
+    public void Attach(string owner)
     {
+        _owners.Add(owner);
+        _logger.LogInformation("Brightness attach by {Owner}: owners={Count}, alreadyAttached={Attached}", owner, _owners.Count, _attached);
+
         if (_attached)
         {
             return;
@@ -63,6 +72,7 @@ public sealed class BrightnessService : IBrightnessService
                 }
 
                 _watcher = watcher;
+                _logger.LogInformation("Brightness ready: available={Available}, listening={Listening}", current.HasValue, watcher != null);
                 IsAvailable = current.HasValue;
                 Percent = current ?? 0;
                 Changed?.Invoke(this, EventArgs.Empty);
@@ -70,9 +80,13 @@ public sealed class BrightnessService : IBrightnessService
         });
     }
 
-    public void Detach()
+    public void Detach(string owner)
     {
-        if (!_attached)
+        bool removed = _owners.Remove(owner);
+        _logger.LogInformation("Brightness detach by {Owner}: removed={Removed}, ownersLeft={Count}, attached={Attached}", owner, removed, _owners.Count, _attached);
+
+        // Pemilik lain masih memakai (misalnya overlay saat tab Control menutup): jangan dilepas.
+        if (!removed || _owners.Count > 0 || !_attached)
         {
             return;
         }
@@ -209,6 +223,7 @@ public sealed class BrightnessService : IBrightnessService
         {
             if (!_attached)
             {
+                _logger.LogInformation("Brightness event {Percent} ignored: not attached", percent);
                 return;
             }
 
@@ -217,10 +232,12 @@ public sealed class BrightnessService : IBrightnessService
             {
                 if (_writing || _pendingPercent >= 0)
                 {
+                    _logger.LogInformation("Brightness event {Percent} ignored: own write in progress", percent);
                     return;
                 }
             }
 
+            _logger.LogInformation("Brightness event {Percent} accepted", percent);
             Percent = percent;
             Changed?.Invoke(this, EventArgs.Empty);
         }));

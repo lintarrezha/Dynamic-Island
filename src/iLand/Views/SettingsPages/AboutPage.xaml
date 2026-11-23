@@ -92,7 +92,17 @@
                     <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
                                Text="Night light and Battery saver have no official switch in Windows, so iLand edits the values Windows itself uses: a Night light registry value, and the automatic Battery saver threshold. When iLand turns Battery saver on, it keeps your original threshold in settings.json and puts it back when you turn it off. The color picker looks at a still picture of the screen in memory only." />
                     <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
+                               Text="Device alerts (Meeting &amp; Alerts) read, only while each switch is on: the system volume and mute state, the brightness of a laptop's built-in screen, the battery and charger state, and which of your paired Bluetooth devices are connected. A device name is shown briefly and is never saved or written to the log. iLand does not scan for nearby Bluetooth devices or read their battery level." />
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
+                               Text="The Caps Lock indicator is off by default. It only checks whether Caps Lock is on, about ten times per second. It does not read any other key and never records what you type." />
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
+                               Text="Meeting mode is off by default. To notice a meeting it reads which other apps have the microphone open, and their process names. It never listens to audio, and the names are not saved or written to the log. During a meeting it can pause your music, and the mic button mutes or unmutes your default microphone for the whole system. iLand does not turn the microphone back on by itself. The apps you add to the ignore list are saved in settings.json on this PC." />
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
+                               Text="Clipboard history is off by default. When you turn it on, your last 20 copied texts are kept in memory only. Copies marked private by password managers are skipped, and nothing is saved to disk, written to the log, or sent anywhere." />
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
                                Text="Check for updates sends one plain request to GitHub, which can see your IP address like any website. Nothing else is sent, and it never runs by itself." />
+                    <TextBlock Style="{DynamicResource SettingsRowDescription}" Margin="0,10,0,0"
+                               Text="iLand never records what you type in other apps, never reads your notifications, and never records audio from your microphone or speakers except in a screen recording you start yourself. The only data that leaves your PC is the song details sent to lrclib.net when lyrics are on, and the request to GitHub when you press Check for updates." />
                 </StackPanel>
             </Border>
         </StackPanel>

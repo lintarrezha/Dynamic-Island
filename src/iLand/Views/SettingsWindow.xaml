@@ -28,6 +28,9 @@
             <DataTemplate DataType="{x:Type vm:MusicSettingsViewModel}">
                 <pages:MusicPage />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:MeetingAlertsViewModel}">
+                <pages:MeetingAlertsPage />
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:CaptureSettingsViewModel}">
                 <pages:CapturePage />
             </DataTemplate>

@@ -127,6 +127,61 @@ public class AppSettings
     public bool ShowVolumeBrightnessOverlay { get; set; } = true;
 
     /// <summary>
+    /// Panel kecil dengan cincin baterai saat charger dicolok, dan "Fully charged" sekali saat baterai penuh.
+    /// Mati = tidak ada panel dan notifikasi "Battery full" lama yang berlaku. Bawaan aktif.
+    /// </summary>
+    public bool ChargingAnimationEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Chip singkat dengan nama perangkat saat earbuds, headset, atau speaker Bluetooth yang sudah dipasangkan baru tersambung.
+    /// Mati = pengamat Bluetooth dihentikan sepenuhnya. Bawaan aktif.
+    /// </summary>
+    public bool BluetoothConnectedOverlay { get; set; } = true;
+
+    /// <summary>
+    /// Chip "Caps Lock On/Off" saat status Caps Lock berubah. MATI secara bawaan (opt-in). iLand hanya membaca apakah Caps Lock
+    /// menyala (GetKeyState satu tombol), tanpa hook keyboard dan tanpa merekam ketikan. Mati = timer pemeriksa dihentikan.
+    /// </summary>
+    public bool CapsLockOverlay { get; set; } = false;
+
+    /// <summary>
+    /// Scroll di atas pill idle mengubah volume sistem. Hanya bekerja bila HoverToExpand mati. MATI secara bawaan.
+    /// </summary>
+    public bool ScrollVolumeEnabled { get; set; } = false;
+
+    /// <summary>
+    /// Mode rapat otomatis: terdeteksi saat aplikasi lain membuka mikrofon beberapa detik. Menahan peringatan iLand, menjeda musik
+    /// (bila MeetingPauseMedia), dan menampilkan tanda atau tombol mic. Hanya status pemakaian dan nama proses yang dibaca, tidak pernah audio.
+    /// MATI secara bawaan (opt-in). Mati = pemantau mikrofon dihentikan.
+    /// </summary>
+    public bool MeetingModeEnabled { get; set; } = false;
+
+    /// <summary>Gaya tampilan tab Music: Classic (bawaan) atau Glass. Dipilih di Settings, Music and Lyrics.</summary>
+    [JsonConverter(typeof(LenientEnumConverter<MusicTabStyle>))]
+    public MusicTabStyle MusicStyle { get; set; } = MusicTabStyle.Classic;
+
+    /// <summary>Jeda musik saat rapat mulai, dan lanjutkan setelah rapat hanya bila iLand yang menjedanya. Bawaan aktif.</summary>
+    public bool MeetingPauseMedia { get; set; } = true;
+
+    /// <summary>Tombol kecil di island untuk membisukan mikrofon default sistem selama rapat. Bawaan aktif. Mati = hanya tanda.</summary>
+    public bool MeetingShowMicButton { get; set; } = true;
+
+    /// <summary>Nama proses (tanpa .exe) aplikasi yang membuka mikrofon tetapi bukan rapat. Dinormalkan dan dibatasi di Validate().</summary>
+    public List<string> MeetingIgnoredApps { get; set; } = new();
+
+    /// <summary>Merapikan nama proses: dipangkas dan tanpa akhiran .exe.</summary>
+    public static string NormalizeProcessName(string? name)
+    {
+        string value = (name ?? string.Empty).Trim();
+        if (value.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            value = value[..^4].TrimEnd();
+        }
+
+        return value;
+    }
+
+    /// <summary>
     /// Ambang otomatis Battery saver milik pengguna (persen), disimpan HANYA saat iLand menaikkannya ke 100 untuk
     /// menyalakan Battery saver dari tab Control. Null = iLand tidak mengubah apa pun. Dipakai untuk mengembalikan nilai aslinya
     /// (juga setelah iLand tertutup mendadak).
@@ -202,7 +257,13 @@ public class AppSettings
         ExpandedCornerRadius = Math.Clamp(ExpandedCornerRadius, 16, 36);
         Opacity = Math.Clamp(Opacity, 0.6, 1.0);
         MonitorDeviceName ??= string.Empty;
-        LyricsOffsetMs = Math.Clamp(LyricsOffsetMs, -5000, 5000);
+        LyricsOffsetMs = Math.Clamp(LyricsOffsetMs, -2000, 2000);
+        MeetingIgnoredApps = (MeetingIgnoredApps ?? new List<string>())
+            .Select(NormalizeProcessName)
+            .Where(name => name.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(50)
+            .ToList();
     }
 
     private static double SanitizeScale(double value)

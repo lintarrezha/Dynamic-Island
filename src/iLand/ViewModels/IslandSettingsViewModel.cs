@@ -53,9 +53,6 @@ public sealed partial class IslandSettingsViewModel : SettingsPageViewModel
     [ObservableProperty] private bool _shelfTabEnabled = true;
     [ObservableProperty] private bool _captureTabEnabled = true;
 
-    // ---- Volume dan kecerahan (hanya disimpan, perilakunya dibuat di Prompt 7) ----
-    [ObservableProperty] private bool _showVolumeBrightnessOverlay = true;
-
     /// <summary>Bentuk yang dipilih, untuk pratinjau.</summary>
     public IslandShape PreviewShape => ShapeIndex == 1 ? IslandShape.Notch : IslandShape.Dynamic;
 
@@ -93,7 +90,6 @@ public sealed partial class IslandSettingsViewModel : SettingsPageViewModel
             TodoTabEnabled = current.IsTabEnabled(IslandTab.Todo);
             ShelfTabEnabled = current.IsTabEnabled(IslandTab.Shelf);
             CaptureTabEnabled = current.IsTabEnabled(IslandTab.Capture);
-            ShowVolumeBrightnessOverlay = current.ShowVolumeBrightnessOverlay;
         });
     }
 
@@ -173,5 +169,4 @@ public sealed partial class IslandSettingsViewModel : SettingsPageViewModel
     partial void OnTodoTabEnabledChanged(bool value) => Update(s => s.SetTabEnabled(IslandTab.Todo, value));
     partial void OnShelfTabEnabledChanged(bool value) => Update(s => s.SetTabEnabled(IslandTab.Shelf, value));
     partial void OnCaptureTabEnabledChanged(bool value) => Update(s => s.SetTabEnabled(IslandTab.Capture, value));
-    partial void OnShowVolumeBrightnessOverlayChanged(bool value) => Update(s => s.ShowVolumeBrightnessOverlay = value);
 }

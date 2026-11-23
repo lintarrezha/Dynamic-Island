@@ -1,26 +1,73 @@
 <UserControl x:Class="iLand.Views.SettingsPages.MusicPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:sc="clr-namespace:iLand.Views.SettingsControls">
+             xmlns:sc="clr-namespace:iLand.Views.SettingsControls"
+             xmlns:components="clr-namespace:iLand.Views.Components">
 
     <!--
-        Halaman Music dan Lyrics. Prompt 7 menambah geser waktu lirik, visualizer, dan lainnya. Toggle Lyrics adalah satu-satunya sumber pengaturan lirik.
+        Halaman Music dan Lyrics. Toggle Lyrics dan geser waktu lirik di sini adalah satu-satunya sumber pengaturan lirik.
         Gaya bernama (Style) memakai DynamicResource karena kamus SettingsTheme.xaml dimuat di SettingsWindow,
         sedangkan halaman ini dibuat sebelum dipasang ke jendela (StaticResource tidak menemukannya).
         Kontrol bergaya implisit (SettingsRow, SettingsSlider, SettingsPageLayout) aman.
     -->
 
-    <sc:SettingsPageLayout Title="Music &amp; Lyrics" Subtitle="Lyrics for the song you are playing.">
+    <sc:SettingsPageLayout Title="Music &amp; Lyrics" Subtitle="Lyrics and how you control music.">
         <StackPanel>
-                <TextBlock Text="Lyrics" Style="{DynamicResource SettingsSectionTitle}" />
-                <Border Style="{DynamicResource SettingsCard}">
-                    <StackPanel>
+            <TextBlock Text="Music tab" Style="{DynamicResource SettingsSectionTitle}" />
+            <Border Style="{DynamicResource SettingsCard}">
+                <StackPanel>
+                    <sc:SettingsRow Title="Music tab style"
+                                    Description="Classic keeps the current layout. Glass puts the cover, a lyrics card, the progress and the volume in one view, on a blurred copy of the cover. In Glass, lyrics load by themselves when lyrics are turned on below.">
+                        <components:SegmentedControl Width="200" Height="32" AllowKeyboard="True" Items="Classic|Glass"
+                                                     SelectedIndex="{Binding MusicStyleIndex, Mode=TwoWay}" />
+                    </sc:SettingsRow>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Lyrics" Style="{DynamicResource SettingsSectionTitle}" />
+            <Border Style="{DynamicResource SettingsCard}">
+                <StackPanel>
                     <sc:SettingsRow Title="Lyrics"
                                     Description="Show synced lyrics for the song you are playing. When on, the title, artist, album and length of the current song are sent to lrclib.net, and nothing else. Off by default. Found lyrics are cached on this PC.">
                         <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding LyricsEnabled}" />
                     </sc:SettingsRow>
-                    </StackPanel>
-                </Border>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Lyrics timing"
+                                    Description="Shift the lyrics if they run ahead of or behind the song. This applies to every song."
+                                    IsStacked="True">
+                        <StackPanel>
+                            <sc:SettingsSlider Minimum="-2" Maximum="2" TickFrequency="0.1" ValueFormat="{}{0:+0.0;-0.0;0.0} s"
+                                               Value="{Binding LyricsOffsetSeconds}" />
+                            <Grid Margin="0,2,0,0">
+                                <TextBlock Text="Later" HorizontalAlignment="Left" Style="{DynamicResource SettingsRowDescription}" />
+                                <TextBlock Text="Earlier" HorizontalAlignment="Right" Style="{DynamicResource SettingsRowDescription}" />
+                            </Grid>
+                        </StackPanel>
+                    </sc:SettingsRow>
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Reset timing" Description="Back to 0.0 s.">
+                        <Button Content="Reset" Style="{DynamicResource SettingsSecondaryButtonStyle}"
+                                Command="{Binding ResetLyricsOffsetCommand}" />
+                    </sc:SettingsRow>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Gestures" Style="{DynamicResource SettingsSectionTitle}" />
+            <Border Style="{DynamicResource SettingsCard}">
+                <StackPanel>
+                    <sc:SettingsRow Title="Switch tabs"
+                                    Description="Scroll over the tab bar while the island is open to move between tabs." />
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Jump in a song"
+                                    Description="Click or drag the progress bar to jump to a time, or click a lyric line to jump to it. Jumping only works when the music player allows it." />
+                    <Border Style="{DynamicResource SettingsDivider}" />
+                    <sc:SettingsRow Title="Scroll over the island to change volume"
+                                    Description="Scroll over the idle island to change the system volume. This only works when Hover to expand is turned off, because otherwise the island opens as soon as the pointer touches it. Scrolling over the tab bar still switches tabs. Off by default.">
+                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding ScrollVolumeEnabled}"
+                                  AutomationProperties.Name="Scroll over the island to change volume" />
+                    </sc:SettingsRow>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </sc:SettingsPageLayout>
 </UserControl>

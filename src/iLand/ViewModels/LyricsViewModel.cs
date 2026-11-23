@@ -66,6 +66,10 @@ public partial class LyricsViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isConfirmVisible;
 
+    /// <summary>True = menu geser waktu lirik (titik tiga di gaya Glass) terbuka.</summary>
+    [ObservableProperty]
+    private bool _isTimingMenuOpen;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowStatus))]
     [NotifyPropertyChangedFor(nameof(ShowSynced))]
@@ -102,7 +106,7 @@ public partial class LyricsViewModel : ObservableObject, IDisposable
     // ---- Geser waktu lirik (stepper di tab Music) ----
 
     private const int OffsetStepMs = 500;
-    private const int OffsetLimitMs = 5000;
+    private const int OffsetLimitMs = 2000;
 
     private TimeSpan LyricsOffset => TimeSpan.FromMilliseconds(_settingsService.Current.LyricsOffsetMs);
 
@@ -137,6 +141,45 @@ public partial class LyricsViewModel : ObservableObject, IDisposable
     /// <summary>Tombol "+": lirik tampil lebih cepat 0,5 detik (batas +5 detik).</summary>
     [RelayCommand]
     private void OffsetUp() => ChangeOffset(OffsetStepMs);
+
+    /// <summary>Tombol "Reset" di menu timing (gaya Glass): kembali ke 0,0 detik.</summary>
+    [RelayCommand]
+    private void OffsetReset()
+    {
+        if (_settingsService.Current.LyricsOffsetMs == 0)
+        {
+            return;
+        }
+
+        _settingsService.Current.LyricsOffsetMs = 0;
+        _settingsService.NotifyChanged();
+    }
+
+    [RelayCommand]
+    private void ToggleTimingMenu() => IsTimingMenuOpen = !IsTimingMenuOpen;
+
+    public void CloseTimingMenu() => IsTimingMenuOpen = false;
+
+    /// <summary>
+    /// Gaya Glass: membuka panel lirik otomatis, tetapi HANYA bila lirik sudah dinyalakan di Settings.
+    /// Bila belum, tidak ada yang dimuat dan tidak ada permintaan jaringan (kartu menawarkan "Turn on lyrics").
+    /// </summary>
+    public void OpenIfEnabled()
+    {
+        if (IsOpen || !_settingsService.Current.LyricsEnabled)
+        {
+            return;
+        }
+
+        Open();
+    }
+
+    /// <summary>Menutup panel lirik (dipakai saat pengguna kembali ke gaya Classic).</summary>
+    public void CloseLyricsPanel()
+    {
+        IsOpen = false;
+        IsTimingMenuOpen = false;
+    }
 
     private void ChangeOffset(int deltaMs)
     {
@@ -191,6 +234,11 @@ public partial class LyricsViewModel : ObservableObject, IDisposable
 
         _isContextVisible = visible;
         OnPropertyChanged(nameof(IsContextVisible));
+
+        if (!visible)
+        {
+            IsTimingMenuOpen = false; // menu ikut tertutup saat island menutup atau tab berganti
+        }
 
         if (visible)
         {

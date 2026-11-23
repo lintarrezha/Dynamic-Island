@@ -119,12 +119,6 @@
                                     Description="Keep out of the way of games and fullscreen video.">
                         <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding HideWhenFullscreen}" />
                     </sc:SettingsRow>
-                    <Border Style="{DynamicResource SettingsDivider}" />
-                    <sc:SettingsRow Title="Volume &amp; brightness on island"
-                                    Description="Show a short bar on the island when you change the volume or brightness.">
-                        <CheckBox Style="{DynamicResource SettingsToggleStyle}" IsChecked="{Binding ShowVolumeBrightnessOverlay}"
-                                  AutomationProperties.Name="Volume and brightness on island" />
-                    </sc:SettingsRow>
                     </StackPanel>
                 </Border>
                 <TextBlock Text="Shelf" Style="{DynamicResource SettingsSectionTitle}" />

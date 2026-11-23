@@ -9,8 +9,9 @@ public readonly record struct TabSize(double Width, double Height);
 /// Informasi tambahan yang bisa mengubah ukuran sebuah tab.
 /// ItemCount: jumlah item pada tab yang tingginya dinamis (Todo = jumlah tugas, Mixer = jumlah aplikasi).
 /// WideLayout: true jika tab meminta lebar penuh (mode lirik di tab Music).
+/// GlassMusic: true jika tab Music memakai gaya Glass (lebar dasar, tinggi tetap lebih tinggi).
 /// </summary>
-public readonly record struct TabLayoutRequest(int ItemCount = 0, bool WideLayout = false);
+public readonly record struct TabLayoutRequest(int ItemCount = 0, bool WideLayout = false, bool GlassMusic = false);
 
 /// <summary>
 /// SATU-SATUNYA tempat yang menentukan lebar dan tinggi island expanded untuk tiap tab.
@@ -28,6 +29,9 @@ public static class TabLayout
 
     /// <summary>Tinggi tab Music saat panel lirik terbuka (lebar 640): lebih tinggi agar lirik dan kontrol tidak sesak.</summary>
     public const double MusicLyricsHeight = 280;
+
+    /// <summary>Tinggi tab Music gaya Glass (lebar dasar): baris atas 56, kartu lirik, baris progres 22. Isi tab = 290 - 74 = 216.</summary>
+    public const double MusicGlassHeight = 290;
     public const double TimerHeight = 220;
     public const double ShelfHeight = 280;
 
@@ -86,7 +90,7 @@ public static class TabLayout
         double height = tab switch
         {
             IslandTab.Home => HomeHeight,
-            IslandTab.Music => request.WideLayout ? MusicLyricsHeight : MusicHeight,
+            IslandTab.Music => request.GlassMusic ? MusicGlassHeight : request.WideLayout ? MusicLyricsHeight : MusicHeight,
             IslandTab.Mixer => GetMixerHeight(request.ItemCount),
             IslandTab.Timer => TimerHeight,
             IslandTab.Todo => GetTodoHeight(request.ItemCount),

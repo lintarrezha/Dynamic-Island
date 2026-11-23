@@ -38,6 +38,12 @@ public static class IslandProfile
     /// <summary>Celah island Dynamic dari tepi atas layar.</summary>
     public const double DynamicTopGap = 6;
 
+    /// <summary>
+    /// Radius terbesar bentuk Dynamic yang tidak expanded. Pill pendek tetap setengah tingginya (kapsul),
+    /// tetapi overlay yang tinggi (panel charging) tidak menjadi hampir bulat.
+    /// </summary>
+    public const double MaxPillRadius = 30;
+
     /// <summary>Radius sudut bawah mode mini.</summary>
     public const double MiniBottomRadius = 7;
 
@@ -88,7 +94,7 @@ public static class IslandProfile
             };
         }
 
-        double radius = mode == IslandVisualMode.Expanded ? expandedRadius : height / 2;
+        double radius = mode == IslandVisualMode.Expanded ? expandedRadius : Math.Min(height / 2, MaxPillRadius);
         return new IslandShapeMetrics(gap, radius, radius, 0);
     }
 }
